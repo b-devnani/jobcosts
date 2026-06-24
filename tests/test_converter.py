@@ -158,6 +158,21 @@ def test_no_milestones_leaves_cells_blank(csv_text):
     ws = load_workbook(io.BytesIO(data))["Job Cost"]
     assert ws["I3"].value is None
     assert ws["K4"].value is None
+    assert ws["F3"].value is None          # contract amount on last pay app
+    assert ws["G3"].value == "(month)"     # template placeholder left intact
+
+
+def test_last_pay_app_fields_written(csv_text):
+    data, _ = converter.convert_csv_to_workbook_bytes(
+        csv_text,
+        name="Pay App",
+        contract_amount_last_pay_app="1,234,567.89",
+        month_last_pay_app="2026-05-31",
+    )
+    ws = load_workbook(io.BytesIO(data))["Job Cost"]
+    assert ws["F3"].value == 1234567.89
+    assert ws["G3"].value.date() == date(2026, 5, 31)
+    assert ws["G3"].number_format == converter.DATE_FORMAT
 
 
 def test_safe_filename():

@@ -29,7 +29,15 @@ project:
 | `I4` | Original Final Completion Date |
 | `K3` | Current Substantial Comp Date |
 | `K4` | Current Final Comp Date |
+| `F3` | Contract amount on last pay app |
+| `G3` | Month of last pay app |
 | file name → title cell `A1` | Project name |
+
+The project list is **seeded on first run** from `backend/seed/projects_seed.csv`
+(a Company-Home style export of project numbers, names and any known dates), so
+the dropdown is populated out of the box. Every field except the name is
+optional — admins fill in the rest later. Seeding runs once; deleting a seeded
+project does not bring it back.
 
 > Procore placeholder rows (cost code `None`) are skipped automatically. The
 > contract-amount cells (`C3`–`C5`) are template formulas that recalculate from
@@ -58,6 +66,7 @@ Then open <http://127.0.0.1:8000>.
 |---------|---------|---------|
 | `ADMIN_PASSWORD` | `admin` | Password protecting project writes |
 | `JOBCOSTS_DB` | `backend/jobcosts.db` | SQLite database path |
+| `JOBCOSTS_SEED` | `1` | Set to `0` to skip seeding the project list |
 | `PORT` / `HOST` | `8000` / `127.0.0.1` | Bind address for `run.sh` |
 
 ---
@@ -70,6 +79,7 @@ backend/
   converter.py      CSV -> XLSX core logic (steps 6-9 + milestone dates)
   db.py             SQLite project store (stdlib sqlite3)
   template/         The Job Cost Projection template workbook
+  seed/             projects_seed.csv used to seed the dropdown on first run
   static/           Frontend (index.html, app.js, styles.css)
 tests/
   test_converter.py Unit tests for the conversion

@@ -1,0 +1,35 @@
+# Render Blueprint — deploy the Job Cost Projection tool with one click.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# In the Render dashboard: New → Blueprint → connect this repo. Render reads
+# this file and provisions the service below.
+#
+# NOTE: the persistent `disk` keeps admin edits across deploys/restarts and
+# requires a paid instance type (starter or higher). To run on the free tier,
+# delete the `disk:` block and the `JOBCOSTS_DB` env var — the app will then use
+# an ephemeral database that re-seeds the project list on every restart (admin
+# edits are not retained).
+
+services:
+  - type: web
+    name: jobcosts
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Store the SQLite database on the persistent disk mounted below.
+      - key: JOBCOSTS_DB
+        value: /data/jobcosts.db
+      # Render generates a strong admin password; read it in the dashboard
+      # (Environment tab) after the first deploy.
+      - key: ADMIN_PASSWORD
+        generateValue: true
+    disk:
+      name: jobcosts-data
+      mountPath: /data
+      sizeGB: 1

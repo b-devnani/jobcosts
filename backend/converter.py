@@ -26,6 +26,8 @@ from typing import Sequence
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.page import PageMargins
+from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.worksheet import Worksheet
 
 TEMPLATE_PATH = Path(__file__).resolve().parent / "template" / "Job_Cost_Projection_Template.xlsx"
@@ -47,16 +49,19 @@ DATE_FORMAT = "mm-dd-yy"
 
 # Visible width of the main table (columns A..M) used when applying styling.
 TABLE_LAST_COL = 13  # column M
+COMMITTED_COL = 7    # column G — Committed Costs (shown blue)
+EAC_COL = 11         # column K — Estimated Cost at Completion (shown green)
 
-# Colour palette for the prettified workbook.
-_NAVY = "1F4E78"        # header band / title / totals border
-_STEEL = "2E5E92"       # sub-header accents
-_BAND = "F3F7FC"        # zebra-striped data rows
-_TOTAL_FILL = "DCE6F4"  # totals row
-_LABEL_FILL = "EAF1FB"  # summary value cells
-_WHITE = "FFFFFF"
-_INK = "1D2733"
-_GRID = "C9D3E0"        # thin cell borders
+# Brand + table palette (kept deliberately spare: the only fill is the grey
+# table header; columns G/K carry colour, everything else is plain).
+_BRAND_DARK = "26333F"      # BURLING charcoal — title / labels above the table
+_LOGO_BLUE = "2E6DA4"       # BURLING logo box border + value underlines
+_GREY_HEADER = "D9D9D9"     # table header fill
+_COMMITTED_BLUE = "0070C0"  # Committed Costs values
+_EAC_GREEN = "1E7B34"       # Estimated Cost at Completion values
+_BORDER = "808080"          # table column / cell borders
+_BLACK = "000000"
+_THEME_FONT = "Century Gothic"  # geometric sans for the header area
 
 # Indexes (0-based) of the CSV columns that survive "delete columns A, D, E"
 # and form template columns A..I.  Order matters: it is the template order.
@@ -254,96 +259,112 @@ def _rewrite_formulas_for_totals(ws: Worksheet, data_rows: int) -> None:
         ws[f"L{new_l161}"] = f"=+L{new_l159}-L{new_l160}"
 
 
-def _style_workbook(ws: Worksheet, data_rows: int) -> None:
-    """Apply a clean, professional look on top of the filled-in template.
+def _recolour(cell, rgb: str) -> None:
+    """Change only a cell's font colour, keeping its other font attributes."""
+    f = cell.font
+    cell.font = Font(name=f.name, sz=f.sz, bold=f.bold, italic=f.italic, color=rgb)
 
-    Only presentation is touched (fonts, fills, borders, alignment, frozen
-    header) -- cell values, formulas and number formats are left intact.
+
+def _style_workbook(ws: Worksheet, data_rows: int, title: str) -> None:
+    """Apply the requested presentation on top of the filled-in template.
+
+    Above the table: the BURLING logo + a themed title/summary. The table is
+    left as-is apart from column borders, a grey header, blue Committed-Costs and
+    green Estimated-Cost-at-Completion columns, and a bold totals row with a top
+    border and double bottom border. Values, formulas and number formats are
+    never touched.
     """
     totals_row = FIRST_DATA_ROW + data_rows
     last_col = TABLE_LAST_COL
 
     ws.sheet_view.showGridLines = False
-    # Keep the title, summary and column headers visible while scrolling.
     ws.freeze_panes = "A8"
 
-    thin = Side(style="thin", color=_GRID)
-    heavy = Side(style="medium", color=_NAVY)
-    box = Border(left=thin, right=thin, top=thin, bottom=thin)
+    # --- Logo (top-left) --- replaces the fragile array formula in A1 -------- #
+    ws["A1"] = "BURLING"
+    logo = ws["A1"]
+    logo.font = Font(name="Times New Roman", size=20, bold=True, color=_BRAND_DARK)
+    logo.alignment = Alignment(horizontal="center", vertical="center")
+    blue = Side(style="medium", color=_LOGO_BLUE)
+    logo.border = Border(left=blue, right=blue, top=blue, bottom=blue)
+    ws.row_dimensions[1].height = 40
 
-    # --- Title banner (row 1) ---------------------------------------------- #
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=last_col)
-    title = ws.cell(row=1, column=1)
-    title.font = Font(name="Calibri", size=16, bold=True, color=_WHITE)
-    title.alignment = Alignment(horizontal="center", vertical="center")
-    title.fill = PatternFill("solid", fgColor=_NAVY)
-    ws.row_dimensions[1].height = 30
+    # --- Title (themed font) ----------------------------------------------- #
+    ws.merge_cells("C1:K1")
+    t = ws["C1"]
+    t.value = title or "Job Cost Projection"
+    t.font = Font(name=_THEME_FONT, size=18, bold=True, color=_BRAND_DARK)
+    t.alignment = Alignment(horizontal="center", vertical="center")
 
-    # --- Summary block (rows 3-5) ------------------------------------------ #
+    # --- Summary block (rows 3-5): themed fonts, underlined values --------- #
+    underline = Border(bottom=Side(style="thin", color=_LOGO_BLUE))
     for r in range(3, 6):
         for c in range(1, last_col + 1):
             cell = ws.cell(row=r, column=c)
             if cell.value is not None:
-                cell.font = Font(bold=True, size=11, color=_INK)
+                cell.font = Font(name=_THEME_FONT, size=11, bold=True, color=_BRAND_DARK)
     for coord in ("C3", "C4", "C5", "F3", "G3", "I3", "I4", "K3", "K4"):
         cell = ws[coord]
-        cell.fill = PatternFill("solid", fgColor=_LABEL_FILL)
-        cell.border = Border(bottom=Side(style="thin", color=_STEEL))
+        cell.font = Font(name=_THEME_FONT, size=11, bold=True, color=_BRAND_DARK)
+        cell.border = underline
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # --- Column header band (row 7) ---------------------------------------- #
-    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    # --- Table: borders + grey header (table content otherwise unchanged) --- #
+    col_side = Side(style="thin", color=_BORDER)
+    col_border = Border(left=col_side, right=col_side)
+    header_box = Border(left=col_side, right=col_side, top=col_side, bottom=col_side)
+
     for c in range(1, last_col + 1):
         cell = ws.cell(row=HEADER_ROW, column=c)
-        cell.font = Font(bold=True, size=10, color=_WHITE)
-        cell.fill = PatternFill("solid", fgColor=_NAVY)
-        cell.alignment = header_align
-        cell.border = Border(left=thin, right=thin, top=heavy, bottom=heavy)
-    ws.row_dimensions[HEADER_ROW].height = 42
+        cell.fill = PatternFill("solid", fgColor=_GREY_HEADER)
+        cell.font = Font(bold=True, sz=cell.font.sz or 11, name=cell.font.name, color=_BLACK)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = header_box
 
-    # --- Data rows --------------------------------------------------------- #
-    band = PatternFill("solid", fgColor=_BAND)
-    left = Alignment(horizontal="left", vertical="center")
-    center = Alignment(horizontal="center", vertical="center")
-    right = Alignment(horizontal="right", vertical="center")
-    notes = Alignment(horizontal="left", vertical="center", wrap_text=True)
     for i in range(data_rows):
         r = FIRST_DATA_ROW + i
-        striped = i % 2 == 1
         for c in range(1, last_col + 1):
-            cell = ws.cell(row=r, column=c)
-            cell.font = Font(size=10, color=_INK)
-            cell.border = box
-            if striped:
-                cell.fill = band
-            if c == 1:
-                cell.alignment = left
-            elif c == 2:
-                cell.alignment = center
-            elif c == last_col:  # Notes/Comments
-                cell.alignment = notes
-            else:
-                cell.alignment = right
+            ws.cell(row=r, column=c).border = col_border
+        _recolour(ws.cell(row=r, column=COMMITTED_COL), _COMMITTED_BLUE)
+        _recolour(ws.cell(row=r, column=EAC_COL), _EAC_GREEN)
 
-    # --- Totals row -------------------------------------------------------- #
-    label = ws.cell(row=totals_row, column=1)
-    if label.value in (None, ""):
-        label.value = "TOTALS"
+    # --- Totals row: bold, top border + double bottom border --------------- #
+    top = Side(style="thin", color=_BLACK)
+    double = Side(style="double", color=_BLACK)
+    if ws.cell(row=totals_row, column=1).value in (None, ""):
+        ws.cell(row=totals_row, column=1).value = "TOTALS"
     for c in range(1, last_col + 1):
         cell = ws.cell(row=totals_row, column=c)
-        cell.font = Font(bold=True, size=10, color=_INK)
-        cell.fill = PatternFill("solid", fgColor=_TOTAL_FILL)
-        cell.border = Border(left=thin, right=thin, top=heavy, bottom=heavy)
-        cell.alignment = left if c == 1 else right
+        cell.font = Font(bold=True, sz=cell.font.sz or 11, name=cell.font.name)
+        cell.border = Border(left=col_side, right=col_side, top=top, bottom=double)
+    _recolour(ws.cell(row=totals_row, column=COMMITTED_COL), _COMMITTED_BLUE)
+    _recolour(ws.cell(row=totals_row, column=EAC_COL), _EAC_GREEN)
 
-    # --- Summary block under the totals (PROJECT FEE ... Pending PCCO) ------ #
+    # --- Summary block under the totals (bold labels, bordered values) ------ #
     for r in range(totals_row + 2, totals_row + 8):
         label_cell = ws.cell(row=r, column=11)   # column K
         value_cell = ws.cell(row=r, column=12)   # column L
         if label_cell.value is not None:
-            label_cell.font = Font(bold=True, size=10, color=_INK)
-            value_cell.fill = PatternFill("solid", fgColor=_LABEL_FILL)
-            value_cell.border = box
+            label_cell.font = Font(bold=True, sz=label_cell.font.sz or 11, name=label_cell.font.name)
+            value_cell.border = header_box
+
+
+def _setup_print(ws: Worksheet, data_rows: int) -> None:
+    """Landscape, narrow margins, fit all columns to one page wide, repeat the
+    header rows, and a 'Page x of x' centre footer."""
+    last_row = FIRST_DATA_ROW + data_rows + 7  # through the summary block
+
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_margins = PageMargins(
+        left=0.25, right=0.25, top=0.75, bottom=0.75, header=0.3, footer=0.3
+    )
+    ws.print_title_rows = "1:7"  # repeat title + summary + header on every page
+    ws.print_area = f"A1:{get_column_letter(TABLE_LAST_COL)}{last_row}"
+    ws.oddFooter.center.text = "Page &P of &N"
+    ws.evenFooter.center.text = "Page &P of &N"
 
 
 def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
@@ -391,8 +412,9 @@ def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
     _set_number(ws, "F3", project.contract_amount_last_pay_app)
     _set_date(ws, "G3", project.month_last_pay_app)
 
-    # Make it presentable.
-    _style_workbook(ws, n)
+    # Make it presentable and print-ready.
+    _style_workbook(ws, n, project.name)
+    _setup_print(ws, n)
 
     return wb
 

@@ -194,19 +194,47 @@ def test_safe_filename_truncates_long_names():
     assert out.endswith(" Job Costs 062426.xlsx")
 
 
+def test_no_array_formula_regression(workbook_bytes):
+    """A1's array formula caused Excel's 'we found a problem' repair prompt; it
+    must be replaced with static text (the BURLING logo)."""
+    import zipfile
+    data, _ = workbook_bytes
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        sheet = next(n for n in z.namelist() if n.endswith("sheet1.xml"))
+        xml = z.read(sheet).decode("utf-8", "replace")
+    assert 't="array"' not in xml
+    ws = _ws(workbook_bytes)
+    assert ws["A1"].value == "BURLING"
+
+
 def test_workbook_is_styled(workbook_bytes, parsed):
     ws = _ws(workbook_bytes)
     totals_row = 8 + len(parsed)
-    # Gridlines hidden and header frozen.
     assert ws.sheet_view.showGridLines is False
     assert ws.freeze_panes == "A8"
-    # Header band has a navy fill and white text.
-    hdr = ws["A7"]
-    assert hdr.fill.fgColor.rgb.endswith("1F4E78")
-    assert hdr.font.color.rgb.endswith("FFFFFF")
-    assert hdr.font.bold
-    # Totals row labelled and emphasised.
+    # Title is the project name (themed), no fragile formula.
+    assert ws["C1"].value == "Maple Street"
+    # Only the table header is grey.
+    assert ws["A7"].fill.fgColor.rgb.endswith("D9D9D9")
+    assert ws["A7"].font.bold
+    assert ws["A8"].fill.patternType is None  # data rows have no fill
+    # Committed Costs column blue, Estimated Cost at Completion column green.
+    assert ws["G8"].font.color.rgb.endswith("0070C0")
+    assert ws["K8"].font.color.rgb.endswith("1E7B34")
+    # Column borders present on data cells.
+    assert ws["C8"].border.left.style == "thin"
+    # Totals row: labelled, bold, top + double bottom borders.
     assert ws.cell(row=totals_row, column=1).value == "TOTALS"
     assert ws.cell(row=totals_row, column=3).font.bold
-    # Data cells carry borders.
-    assert ws["A8"].border.bottom.style is not None
+    assert ws.cell(row=totals_row, column=3).border.top.style == "thin"
+    assert ws.cell(row=totals_row, column=3).border.bottom.style == "double"
+
+
+def test_print_settings(workbook_bytes):
+    ws = _ws(workbook_bytes)
+    assert ws.page_setup.orientation == "landscape"
+    assert ws.page_setup.fitToWidth == 1
+    assert ws.page_setup.fitToHeight == 0
+    assert ws.print_title_rows in ("1:7", "$1:$7")
+    assert ws.oddFooter.center.text == "Page &P of &N"
+    assert "$A$1:$M$" in ws.print_area

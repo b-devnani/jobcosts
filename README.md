@@ -34,8 +34,13 @@ project:
 | file name → title cell `A1` | Project name |
 
 The workbook downloads as **`<Project Name> Job Costs MMDDYY.xlsx`** (today's
-date), and the styled sheet uses a frozen, banded layout with a navy header
-band, a labelled totals row, and the template's currency/date formats preserved.
+date). The sheet carries the BURLING logo and a themed title/summary header; the
+table itself is left as the template ships it apart from column borders, a grey
+header row, blue **Committed Costs** and green **Estimated Cost at Completion**
+columns, and a bold totals row (top border + double bottom). It prints
+landscape with narrow margins, fits all columns to one page wide, repeats rows
+1–7 on every page, and shows a "Page x of x" footer. Values, formulas and the
+currency/date number formats are never altered.
 
 The project list is **seeded on first run** from `backend/seed/projects_seed.csv`
 (a Company-Home style export of project numbers, names and any known dates), so

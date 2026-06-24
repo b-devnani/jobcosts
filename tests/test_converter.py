@@ -87,6 +87,7 @@ def workbook_bytes(csv_text):
         orig_final_completion="2025-11-30",
         current_substantial_completion="2025-10-15",
         current_final_completion="2025-12-20",
+        report_date=date(2026, 6, 24),
     )
     return data, fname
 
@@ -96,9 +97,9 @@ def _ws(workbook_bytes):
     return load_workbook(io.BytesIO(data))["Job Cost"]
 
 
-def test_filename_is_project_name(workbook_bytes):
+def test_filename_format(workbook_bytes):
     _, fname = workbook_bytes
-    assert fname == "Maple Street.xlsx"
+    assert fname == "Maple Street Job Costs 062426.xlsx"
 
 
 def test_data_pasted_at_row_8(workbook_bytes):
@@ -176,11 +177,36 @@ def test_last_pay_app_fields_written(csv_text):
 
 
 def test_safe_filename():
-    assert converter.safe_filename("A/B:C*?") == "A_B_C__.xlsx"
-    assert converter.safe_filename("   ") == "Job Cost Projection.xlsx"
+    d = date(2026, 6, 24)
+    assert converter.safe_filename("A/B:C*?", d) == "A_B_C__ Job Costs 062426.xlsx"
+    assert converter.safe_filename("   ", d) == "Job Cost Projection Job Costs 062426.xlsx"
+
+
+def test_safe_filename_defaults_to_today():
+    out = converter.safe_filename("Riverside")
+    assert out.startswith("Riverside Job Costs ")
+    assert out.endswith(".xlsx")
 
 
 def test_safe_filename_truncates_long_names():
-    out = converter.safe_filename("X" * 500)
-    assert len(out) <= 120
-    assert out.endswith(".xlsx")
+    out = converter.safe_filename("X" * 500, date(2026, 6, 24))
+    assert len(out) <= 150
+    assert out.endswith(" Job Costs 062426.xlsx")
+
+
+def test_workbook_is_styled(workbook_bytes, parsed):
+    ws = _ws(workbook_bytes)
+    totals_row = 8 + len(parsed)
+    # Gridlines hidden and header frozen.
+    assert ws.sheet_view.showGridLines is False
+    assert ws.freeze_panes == "A8"
+    # Header band has a navy fill and white text.
+    hdr = ws["A7"]
+    assert hdr.fill.fgColor.rgb.endswith("1F4E78")
+    assert hdr.font.color.rgb.endswith("FFFFFF")
+    assert hdr.font.bold
+    # Totals row labelled and emphasised.
+    assert ws.cell(row=totals_row, column=1).value == "TOTALS"
+    assert ws.cell(row=totals_row, column=3).font.bold
+    # Data cells carry borders.
+    assert ws["A8"].border.bottom.style is not None

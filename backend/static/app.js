@@ -18,25 +18,12 @@ const PROJECT_FIELDS = [
   { key: "month_last_pay_app", label: "Month (last pay app)", type: "date" },
 ];
 
-// Fields the Generate form can supply/override (the project number is only an
-// identifier and is not written into the workbook).
-const GENERATE_FIELDS = [
-  "name",
-  "orig_substantial_completion",
-  "orig_final_completion",
-  "current_substantial_completion",
-  "current_final_completion",
-  "contract_amount_last_pay_app",
-  "month_last_pay_app",
-];
-
 let projects = [];
-let selectedFile = null;
 let adminPassword = sessionStorage.getItem("adminPassword") || null;
 
 function setStatus(el, message, kind) {
   el.textContent = message || "";
-  el.className = "status" + (kind ? " " + kind : "");
+  el.className = "status center" + (kind ? " " + kind : "");
 }
 
 async function api(path, { method = "GET", body, admin = false } = {}) {
@@ -72,7 +59,7 @@ $$(".tab").forEach((tab) => {
 });
 
 // --------------------------------------------------------------------------
-// Generate tab
+// Generate tab — pick a project, choose a CSV, download immediately.
 // --------------------------------------------------------------------------
 async function loadProjects() {
   try {
@@ -95,58 +82,22 @@ async function loadProjects() {
   if (current) sel.value = current;
 }
 
-function fillMilestones(project) {
-  GENERATE_FIELDS.forEach((f) => {
-    const el = document.getElementById("m_" + f);
-    if (el) el.value = project && project[f] ? project[f] : "";
-  });
-}
-
-$("#project-select").addEventListener("change", (e) => {
-  const id = e.target.value;
-  const project = projects.find((p) => String(p.id) === id);
-  fillMilestones(project || null);
-});
-
-// Dropzone wiring
-const dropzone = $("#dropzone");
 const csvInput = $("#csv-input");
-dropzone.addEventListener("click", () => csvInput.click());
-dropzone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropzone.classList.add("drag");
-});
-dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
-dropzone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("drag");
-  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
-});
+$("#upload-btn").addEventListener("click", () => csvInput.click());
 csvInput.addEventListener("change", () => {
-  if (csvInput.files.length) setFile(csvInput.files[0]);
+  if (csvInput.files.length) generateAndDownload(csvInput.files[0]);
 });
 
-function setFile(file) {
-  selectedFile = file;
-  $("#file-name").textContent = file ? file.name : "";
-  $("#generate-btn").disabled = !file;
-}
-
-$("#generate-btn").addEventListener("click", async () => {
-  if (!selectedFile) return;
+async function generateAndDownload(file) {
   const status = $("#generate-status");
+  const btn = $("#upload-btn");
   setStatus(status, "Generating…", "busy");
-  $("#generate-btn").disabled = true;
+  btn.disabled = true;
 
   const fd = new FormData();
-  fd.append("csv_file", selectedFile);
+  fd.append("csv_file", file);
   const pid = $("#project-select").value;
   if (pid) fd.append("project_id", pid);
-  GENERATE_FIELDS.forEach((f) => {
-    const el = document.getElementById("m_" + f);
-    const v = el ? el.value.trim() : "";
-    if (v) fd.append(f, v);
-  });
 
   try {
     const res = await fetch("/api/generate", { method: "POST", body: fd });
@@ -166,9 +117,10 @@ $("#generate-btn").addEventListener("click", async () => {
   } catch (e) {
     setStatus(status, "Error: " + e.message, "err");
   } finally {
-    $("#generate-btn").disabled = false;
+    btn.disabled = false;
+    csvInput.value = ""; // allow re-selecting the same file
   }
-});
+}
 
 function filenameFromDisposition(disposition) {
   if (!disposition) return "Job Cost Projection.xlsx";

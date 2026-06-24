@@ -33,6 +33,10 @@ project:
 | `G3` | Month of last pay app |
 | file name → title cell `A1` | Project name |
 
+The workbook downloads as **`<Project Name> Job Costs MMDDYY.xlsx`** (today's
+date), and the styled sheet uses a frozen, banded layout with a navy header
+band, a labelled totals row, and the template's currency/date formats preserved.
+
 The project list is **seeded on first run** from `backend/seed/projects_seed.csv`
 (a Company-Home style export of project numbers, names and any known dates), so
 the dropdown is populated out of the box. Every field except the name is
@@ -55,8 +59,8 @@ pip install -r requirements.txt
 
 Then open <http://127.0.0.1:8000>.
 
-* **Generate** tab — choose a project (or "Manual entry"), drop in the CSV,
-  click **Generate & Download**.
+* **Generate** tab — choose a project, then click **Upload CSV** and pick the
+  file. The workbook builds and downloads automatically (no extra clicks).
 * **Admin** tab — sign in with the admin password, then add / edit / delete
   projects in the grid.
 

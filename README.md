@@ -99,16 +99,28 @@ a SQLite file for the project list. Three things matter when hosting:
 3. **Set a strong `ADMIN_PASSWORD`** and use HTTPS (the admin password travels
    in a request header). Managed hosts provide HTTPS automatically.
 
-### Render (one click)
+### Render (free, one click)
 
-This repo ships a [`render.yaml`](render.yaml) blueprint. In Render: **New →
-Blueprint → connect this repo**. It provisions a web service with a 1 GB
-persistent disk at `/data`, sets `JOBCOSTS_DB=/data/jobcosts.db`, and generates
-a strong `ADMIN_PASSWORD` (read it in the dashboard's Environment tab). A health
-check is exposed at `/healthz`.
+This repo ships a [`render.yaml`](render.yaml) blueprint configured for Render's
+**free** tier. In Render: **New → Blueprint → connect this repo**. It provisions
+a free web service, generates a strong `ADMIN_PASSWORD` (read it in the
+dashboard's Environment tab), and exposes a `/healthz` check. You get a
+`https://…onrender.com` URL with HTTPS, at $0.
 
-> The persistent disk needs a paid (starter+) instance. On the free tier, remove
-> the `disk:` block and `JOBCOSTS_DB` — the DB then re-seeds on every restart.
+Free-tier trade-offs:
+
+* **No persistent disk** — the SQLite DB is ephemeral, so the dropdown re-seeds
+  the 15 projects on every restart and admin edits are not retained. The
+  conversion and the seeded dropdown work fine; type any one-off dates in the
+  Generate form (no saved project needed).
+* **Sleeps when idle** — the first request after ~15 min cold-starts (~30–60s).
+
+To make admin edits **persist**, upgrade to a paid (starter+) instance and add a
+disk — see the comment block at the top of `render.yaml`.
+
+**Want the seeded dates to stick for free?** Edit
+`backend/seed/projects_seed.csv` with the real completion dates and commit — the
+dropdown then re-seeds with the correct data on every boot, no disk required.
 
 ### Anywhere with Docker (Fly.io, Railway, a VPS, …)
 

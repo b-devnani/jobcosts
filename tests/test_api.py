@@ -101,8 +101,8 @@ def test_generate_with_project(client):
     # Returned bytes are a real xlsx (zip) with the data filled in.
     from openpyxl import load_workbook
     ws = load_workbook(io.BytesIO(res.content))["Job Cost"]
-    assert ws["A8"].value == "1-020 - Superintendent"
-    assert ws["I3"].value.strftime("%Y-%m-%d") == "2025-09-15"
+    assert ws["A7"].value == "1-020 - Superintendent"
+    assert ws["I2"].value.strftime("%Y-%m-%d") == "2025-09-15"  # Original Substantial
 
 
 def test_generate_manual_entry(client):

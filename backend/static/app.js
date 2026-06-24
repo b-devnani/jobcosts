@@ -6,16 +6,17 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-// Editable project columns (admin grid), in display order.
+// Editable project columns (admin grid), in display order. Each carries a
+// width so the grid auto-fits columns to their content instead of stretching.
 const PROJECT_FIELDS = [
-  { key: "project_number", label: "Project #", type: "text" },
-  { key: "name", label: "Name", type: "text", required: true },
-  { key: "orig_substantial_completion", label: "Orig. Substantial", type: "date" },
-  { key: "orig_final_completion", label: "Orig. Final", type: "date" },
-  { key: "current_substantial_completion", label: "Current Substantial", type: "date" },
-  { key: "current_final_completion", label: "Current Final", type: "date" },
-  { key: "contract_amount_last_pay_app", label: "Contract $ (last pay app)", type: "number" },
-  { key: "month_last_pay_app", label: "Month (last pay app)", type: "date" },
+  { key: "project_number", label: "Project #", type: "text", width: "110px" },
+  { key: "name", label: "Name", type: "text", required: true, width: "230px" },
+  { key: "orig_substantial_completion", label: "Orig. Substantial", type: "date", width: "140px" },
+  { key: "orig_final_completion", label: "Orig. Final", type: "date", width: "140px" },
+  { key: "current_substantial_completion", label: "Current Substantial", type: "date", width: "140px" },
+  { key: "current_final_completion", label: "Current Final", type: "date", width: "140px" },
+  { key: "contract_amount_last_pay_app", label: "Contract $ (last pay app)", type: "number", width: "150px" },
+  { key: "month_last_pay_app", label: "Month (last pay app)", type: "date", width: "140px" },
 ];
 
 let projects = [];
@@ -224,6 +225,7 @@ function buildRow(p) {
     const input = document.createElement("input");
     input.type = f.type;
     if (f.type === "number") input.step = "0.01";
+    if (f.width) input.style.width = f.width;
     input.value = p[f.key] != null ? p[f.key] : "";
     input.dataset.field = f.key;
     if (f.required) input.placeholder = "Required";

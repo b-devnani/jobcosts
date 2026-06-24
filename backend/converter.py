@@ -24,22 +24,20 @@ from pathlib import Path
 from typing import Sequence
 
 from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.page import PageMargins
-from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.worksheet import Worksheet
 
 TEMPLATE_PATH = Path(__file__).resolve().parent / "template" / "Job_Cost_Projection_Template.xlsx"
 
 SHEET_NAME = "Job Cost"
 
-# Row of the table header inside the template; data starts on the next row.
-HEADER_ROW = 7
-FIRST_DATA_ROW = 8
-# Last data row the pristine template ships with (row 154 holds the totals).
-LAST_TEMPLATE_DATA_ROW = 153
-TOTALS_ROW = 154
+# Layout of the (BURLING) template. The header area occupies rows 1-6; the data
+# table starts on row 7 and the pristine template ships with room up to row 166
+# (row 167 holds the totals, with the PROJECT FEE / Pending PCCO summary below).
+HEADER_ROW = 6
+FIRST_DATA_ROW = 7
+LAST_TEMPLATE_DATA_ROW = 166
+TOTALS_ROW = 167
 
 # Header columns that carry currency values and must be stored as numbers so
 # the workbook's own formulas keep working.
@@ -47,21 +45,10 @@ NUMERIC_OUTPUT_COLUMNS = ("C", "D", "E", "F", "G", "H", "I")
 
 DATE_FORMAT = "mm-dd-yy"
 
-# Visible width of the main table (columns A..M) used when applying styling.
+# Right-most column of the printable table (column M); the template's styling,
+# colours (blue Committed Costs / green Estimated Cost at Completion), borders
+# and logo all live in the template file itself.
 TABLE_LAST_COL = 13  # column M
-COMMITTED_COL = 7    # column G — Committed Costs (shown blue)
-EAC_COL = 11         # column K — Estimated Cost at Completion (shown green)
-
-# Brand + table palette (kept deliberately spare: the only fill is the grey
-# table header; columns G/K carry colour, everything else is plain).
-_BRAND_DARK = "26333F"      # BURLING charcoal — title / labels above the table
-_LOGO_BLUE = "2E6DA4"       # BURLING logo box border + value underlines
-_GREY_HEADER = "D9D9D9"     # table header fill
-_COMMITTED_BLUE = "0070C0"  # Committed Costs values
-_EAC_GREEN = "1E7B34"       # Estimated Cost at Completion values
-_BORDER = "808080"          # table column / cell borders
-_BLACK = "000000"
-_THEME_FONT = "Century Gothic"  # geometric sans for the header area
 
 # Indexes (0-based) of the CSV columns that survive "delete columns A, D, E"
 # and form template columns A..I.  Order matters: it is the template order.
@@ -234,141 +221,43 @@ def _set_number(ws: Worksheet, coord: str, value: float | None) -> None:
     ws[coord].value = value  # keeps the template's existing currency format
 
 
+def _set_value(ws: Worksheet, coord: str, value) -> None:
+    """Set a cell value, leaving the template's own number format in place."""
+    if value is None:
+        return
+    ws[coord].value = value
+
+
 def _rewrite_formulas_for_totals(ws: Worksheet, data_rows: int) -> None:
     """After the surplus rows are deleted, repoint the formulas that referenced
     the original totals/summary rows so the workbook still recalculates."""
     totals_row = FIRST_DATA_ROW + data_rows  # new position of the totals row
     last_data = totals_row - 1
 
-    # Totals row: SUM(col8:col<last_data>) for every numeric/derived column.
+    # Totals row: SUM(col7:col<last_data>) for every numeric/derived column.
     for col in "CDEFGHIJKL":
         ws[f"{col}{totals_row}"] = f"=SUM({col}{FIRST_DATA_ROW}:{col}{last_data})"
 
     # Header contract-amount cells reference the totals row.
-    ws["C3"] = f"=+C{totals_row}"   # Original Contract Amount  (Original Budget total)
-    ws["C4"] = f"=+E{totals_row}"   # Approved PCCO's           (Approved COs total)
-    ws["C5"] = f"=+F{totals_row}"   # Current Contract Amount   (Revised Budget total)
+    ws["C2"] = f"=+C{totals_row}"   # Original Contract Amount  (Original Budget total)
+    ws["C3"] = f"=+E{totals_row}"   # Approved PCCO's           (Approved COs total)
+    ws["C4"] = f"=+F{totals_row}"   # Current Contract Amount   (Revised Budget total)
 
-    # Summary block below the totals (PROJECT FEE ... Pending PCCO Fee) shifts up
-    # by the number of deleted rows. Repoint its one internal formula.
-    shift = LAST_TEMPLATE_DATA_ROW - last_data  # rows removed
-    if shift:
-        new_l159 = 159 - shift
-        new_l160 = 160 - shift
-        new_l161 = 161 - shift
-        ws[f"L{new_l161}"] = f"=+L{new_l159}-L{new_l160}"
+    # Summary block below the totals (PROJECT FEE ... Pending PCCO Fee) sits at a
+    # fixed offset from the totals row; repoint its one internal formula.
+    #   totals_row+2 PROJECT FEE, +3 PROJECT CNTG, +5 Pending PCCO's,
+    #   +6 Pending PCCO's Costs, +7 Pending PCCO Fee (= +5 minus +6).
+    ws[f"L{totals_row + 7}"] = f"=+L{totals_row + 5}-L{totals_row + 6}"
 
 
-def _recolour(cell, rgb: str) -> None:
-    """Change only a cell's font colour, keeping its other font attributes."""
-    f = cell.font
-    cell.font = Font(name=f.name, sz=f.sz, bold=f.bold, italic=f.italic, color=rgb)
+def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo, title: str | None = None):
+    """Return an openpyxl workbook: the BURLING template filled with the CSV data.
 
-
-def _style_workbook(ws: Worksheet, data_rows: int, title: str) -> None:
-    """Apply the requested presentation on top of the filled-in template.
-
-    Above the table: the BURLING logo + a themed title/summary. The table is
-    left as-is apart from column borders, a grey header, blue Committed-Costs and
-    green Estimated-Cost-at-Completion columns, and a bold totals row with a top
-    border and double bottom border. Values, formulas and number formats are
-    never touched.
+    The template already carries the styling, the embedded logo, the per-row
+    formulas (J = MAX(revised, committed) - job-to-date, K = job-to-date + ETC,
+    L = revised - EAC) and the print setup, so this only writes the data, the
+    milestone dates, the last-pay-app figures, and the title.
     """
-    totals_row = FIRST_DATA_ROW + data_rows
-    last_col = TABLE_LAST_COL
-
-    ws.sheet_view.showGridLines = False
-    ws.freeze_panes = "A8"
-
-    # --- Logo (top-left) --- replaces the fragile array formula in A1 -------- #
-    ws["A1"] = "BURLING"
-    logo = ws["A1"]
-    logo.font = Font(name="Times New Roman", size=20, bold=True, color=_BRAND_DARK)
-    logo.alignment = Alignment(horizontal="center", vertical="center")
-    blue = Side(style="medium", color=_LOGO_BLUE)
-    logo.border = Border(left=blue, right=blue, top=blue, bottom=blue)
-    ws.row_dimensions[1].height = 40
-
-    # --- Title (themed font) ----------------------------------------------- #
-    ws.merge_cells("C1:K1")
-    t = ws["C1"]
-    t.value = title or "Job Cost Projection"
-    t.font = Font(name=_THEME_FONT, size=18, bold=True, color=_BRAND_DARK)
-    t.alignment = Alignment(horizontal="center", vertical="center")
-
-    # --- Summary block (rows 3-5): themed fonts, underlined values --------- #
-    underline = Border(bottom=Side(style="thin", color=_LOGO_BLUE))
-    for r in range(3, 6):
-        for c in range(1, last_col + 1):
-            cell = ws.cell(row=r, column=c)
-            if cell.value is not None:
-                cell.font = Font(name=_THEME_FONT, size=11, bold=True, color=_BRAND_DARK)
-    for coord in ("C3", "C4", "C5", "F3", "G3", "I3", "I4", "K3", "K4"):
-        cell = ws[coord]
-        cell.font = Font(name=_THEME_FONT, size=11, bold=True, color=_BRAND_DARK)
-        cell.border = underline
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    # --- Table: borders + grey header (table content otherwise unchanged) --- #
-    col_side = Side(style="thin", color=_BORDER)
-    col_border = Border(left=col_side, right=col_side)
-    header_box = Border(left=col_side, right=col_side, top=col_side, bottom=col_side)
-
-    for c in range(1, last_col + 1):
-        cell = ws.cell(row=HEADER_ROW, column=c)
-        cell.fill = PatternFill("solid", fgColor=_GREY_HEADER)
-        cell.font = Font(bold=True, sz=cell.font.sz or 11, name=cell.font.name, color=_BLACK)
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cell.border = header_box
-
-    for i in range(data_rows):
-        r = FIRST_DATA_ROW + i
-        for c in range(1, last_col + 1):
-            ws.cell(row=r, column=c).border = col_border
-        _recolour(ws.cell(row=r, column=COMMITTED_COL), _COMMITTED_BLUE)
-        _recolour(ws.cell(row=r, column=EAC_COL), _EAC_GREEN)
-
-    # --- Totals row: bold, top border + double bottom border --------------- #
-    top = Side(style="thin", color=_BLACK)
-    double = Side(style="double", color=_BLACK)
-    if ws.cell(row=totals_row, column=1).value in (None, ""):
-        ws.cell(row=totals_row, column=1).value = "TOTALS"
-    for c in range(1, last_col + 1):
-        cell = ws.cell(row=totals_row, column=c)
-        cell.font = Font(bold=True, sz=cell.font.sz or 11, name=cell.font.name)
-        cell.border = Border(left=col_side, right=col_side, top=top, bottom=double)
-    _recolour(ws.cell(row=totals_row, column=COMMITTED_COL), _COMMITTED_BLUE)
-    _recolour(ws.cell(row=totals_row, column=EAC_COL), _EAC_GREEN)
-
-    # --- Summary block under the totals (bold labels, bordered values) ------ #
-    for r in range(totals_row + 2, totals_row + 8):
-        label_cell = ws.cell(row=r, column=11)   # column K
-        value_cell = ws.cell(row=r, column=12)   # column L
-        if label_cell.value is not None:
-            label_cell.font = Font(bold=True, sz=label_cell.font.sz or 11, name=label_cell.font.name)
-            value_cell.border = header_box
-
-
-def _setup_print(ws: Worksheet, data_rows: int) -> None:
-    """Landscape, narrow margins, fit all columns to one page wide, repeat the
-    header rows, and a 'Page x of x' centre footer."""
-    last_row = FIRST_DATA_ROW + data_rows + 7  # through the summary block
-
-    ws.page_setup.orientation = "landscape"
-    ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 0
-    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-    ws.page_margins = PageMargins(
-        left=0.25, right=0.25, top=0.75, bottom=0.75, header=0.3, footer=0.3
-    )
-    ws.print_title_rows = "1:7"  # repeat title + summary + header on every page
-    ws.print_area = f"A1:{get_column_letter(TABLE_LAST_COL)}{last_row}"
-    ws.oddFooter.center.text = "Page &P of &N"
-    ws.evenFooter.center.text = "Page &P of &N"
-
-
-def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
-    """Return an openpyxl workbook: the template with data + dates filled in."""
     try:
         wb = load_workbook(TEMPLATE_PATH)
     except FileNotFoundError:
@@ -382,39 +271,43 @@ def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
     ws = wb[SHEET_NAME]
 
     n = len(csv_rows)
-    capacity = LAST_TEMPLATE_DATA_ROW - FIRST_DATA_ROW + 1  # 146 rows
+    capacity = LAST_TEMPLATE_DATA_ROW - FIRST_DATA_ROW + 1  # 160 rows
     if n > capacity:
         raise ConversionError(
             f"The CSV has {n} rows but the template only has room for {capacity}."
         )
 
-    # Step 8: paste columns A..I as values into the data rows.
+    # Paste columns A..I as values into the data rows (J/K/L formulas stay).
     for i, record in enumerate(csv_rows):
         row = FIRST_DATA_ROW + i
         for col_letter, value in zip("ABCDEFGHI", record):
             ws[f"{col_letter}{row}"] = value
 
-    # Step 9: delete the unused template rows below the pasted data, then fix
-    # up the formulas that pointed at the (now moved) totals/summary rows.
+    # Delete the unused template rows below the pasted data, then repoint the
+    # formulas that referenced the (now moved) totals/summary rows.
     surplus_start = FIRST_DATA_ROW + n
     surplus_count = LAST_TEMPLATE_DATA_ROW - surplus_start + 1
     if surplus_count > 0:
         ws.delete_rows(surplus_start, surplus_count)
     _rewrite_formulas_for_totals(ws, n)
+    totals_row = FIRST_DATA_ROW + n
 
-    # Stamp the four milestone dates from the project record.
-    _set_date(ws, "I3", project.orig_substantial_completion)
-    _set_date(ws, "I4", project.orig_final_completion)
-    _set_date(ws, "K3", project.current_substantial_completion)
-    _set_date(ws, "K4", project.current_final_completion)
+    # Title cell (A1) shows the download file name (without the extension).
+    ws["A1"] = title or (project.name or "Job Cost Projection")
 
-    # "Contract amount on last pay app and month" header cells.
-    _set_number(ws, "F3", project.contract_amount_last_pay_app)
-    _set_date(ws, "G3", project.month_last_pay_app)
+    # Milestone dates (template carries the mm-dd-yy format).
+    _set_date(ws, "I2", project.orig_substantial_completion)
+    _set_date(ws, "I3", project.orig_final_completion)
+    _set_date(ws, "K2", project.current_substantial_completion)
+    _set_date(ws, "K3", project.current_final_completion)
 
-    # Make it presentable and print-ready.
-    _style_workbook(ws, n, project.name)
-    _setup_print(ws, n)
+    # "Contract Amount on last pay app and month" cells. G2 keeps the template's
+    # own month format (mmm 'yy), so only its value is set.
+    _set_number(ws, "F2", project.contract_amount_last_pay_app)
+    _set_value(ws, "G2", project.month_last_pay_app)
+
+    # The surplus-row deletion shrinks the sheet; repoint the print area.
+    ws.print_area = f"A1:{get_column_letter(TABLE_LAST_COL)}{totals_row + 7}"
 
     return wb
 
@@ -459,8 +352,11 @@ def convert_csv_to_workbook_bytes(
         month_last_pay_app=_coerce_date(month_last_pay_app),
     )
     rows = parse_budget_csv(csv_content)
-    wb = build_workbook(rows, project)
+
+    filename = safe_filename(name, report_date)
+    title = filename[:-5] if filename.endswith(".xlsx") else filename
+    wb = build_workbook(rows, project, title=title)
 
     buffer = io.BytesIO()
     wb.save(buffer)
-    return buffer.getvalue(), safe_filename(name, report_date)
+    return buffer.getvalue(), filename

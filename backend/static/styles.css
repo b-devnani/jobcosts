@@ -168,6 +168,9 @@ button { font-family: inherit; }
 /* ---- table ---- */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
+/* Admin grid auto-fits: columns size to content (set per-field in app.js). */
+#projects-table { width: auto; table-layout: auto; }
+#projects-table td input { width: auto; }
 th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
 td input {

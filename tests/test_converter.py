@@ -62,6 +62,19 @@ def test_empty_csv_raises():
         converter.parse_budget_csv("")
 
 
+def test_spoofed_csv_with_wrong_columns_is_rejected():
+    # 12 columns, column 1 is "Cost Code Tier 2", but the other key columns are
+    # wrong -> must be rejected instead of silently mapping the wrong fields.
+    header = (
+        "Tier1,Cost Code Tier 2,WRONG Type,Budget Code,Desc,WRONG Budget,"
+        "Mods,COs,Revised,Committed,Direct,WRONG JTD\n"
+    )
+    row = "1,1-020 - X,L,code,d,100,0,0,100,0,50,50\n"
+    with pytest.raises(converter.ConversionError) as exc:
+        converter.parse_budget_csv(header + row)
+    assert "column 2" in str(exc.value) or "column 5" in str(exc.value)
+
+
 # --------------------------------------------------------------------------- #
 # Workbook building (steps 8-9 + milestones)
 # --------------------------------------------------------------------------- #
@@ -150,3 +163,9 @@ def test_no_milestones_leaves_cells_blank(csv_text):
 def test_safe_filename():
     assert converter.safe_filename("A/B:C*?") == "A_B_C__.xlsx"
     assert converter.safe_filename("   ") == "Job Cost Projection.xlsx"
+
+
+def test_safe_filename_truncates_long_names():
+    out = converter.safe_filename("X" * 500)
+    assert len(out) <= 120
+    assert out.endswith(".xlsx")

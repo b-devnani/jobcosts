@@ -21,10 +21,9 @@ import io
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 TEMPLATE_PATH = Path(__file__).resolve().parent / "template" / "Job_Cost_Projection_Template.xlsx"
@@ -64,6 +63,15 @@ CSV_COLUMN_ORDER = [1, 2, 5, 6, 7, 8, 9, 10, 11]
 # Which of the kept columns are text vs. numeric (by template column letter).
 TEXT_COLUMNS = {"A", "B"}
 
+# A handful of header names we verify so a non-Procore CSV that merely has 12+
+# columns cannot map the wrong fields into the template and silently corrupt it.
+EXPECTED_HEADERS = {
+    1: "cost code tier 2",
+    2: "cost type",
+    5: "original budget amount",
+    11: "job to date costs",
+}
+
 
 class ConversionError(ValueError):
     """Raised when the uploaded CSV does not look like a budget-detail export."""
@@ -84,7 +92,7 @@ class ProjectInfo:
     current_final_completion: date | None = None
 
 
-def _to_number(raw: str):
+def _to_number(raw: str) -> float | str | None:
     """Parse a CSV money cell into a float, treating blanks as ``None``."""
     if raw is None:
         return None
@@ -117,11 +125,21 @@ def parse_budget_csv(content: str | bytes) -> list[list]:
         raise ConversionError("The CSV file is empty.")
 
     header = [c.strip().strip('"') for c in rows[0]]
-    if len(header) < 12 or header[1].lower() not in ("cost code tier 2",):
+    if len(header) < 12:
         raise ConversionError(
-            "Unexpected CSV format: expected a Procore budget-detail export "
-            "with a 'Cost Code Tier 2' column. Found header: "
-            + ", ".join(header[:5])
+            "Unexpected CSV format: expected a Procore budget-detail export with "
+            f"at least 12 columns, found {len(header)}."
+        )
+    mismatches = [
+        f"column {idx} should be '{name}' but is "
+        f"'{header[idx] if idx < len(header) else ''}'"
+        for idx, name in EXPECTED_HEADERS.items()
+        if idx >= len(header) or header[idx].strip().lower() != name
+    ]
+    if mismatches:
+        raise ConversionError(
+            "Unexpected CSV format (is this a Procore budget-detail export?): "
+            + "; ".join(mismatches)
         )
 
     out: list[list] = []
@@ -200,7 +218,16 @@ def _rewrite_formulas_for_totals(ws: Worksheet, data_rows: int) -> None:
 
 def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
     """Return an openpyxl workbook: the template with data + dates filled in."""
-    wb = load_workbook(TEMPLATE_PATH)
+    try:
+        wb = load_workbook(TEMPLATE_PATH)
+    except FileNotFoundError:
+        raise ConversionError(f"Template workbook not found at {TEMPLATE_PATH}.")
+    except Exception as exc:  # corrupt / unreadable workbook
+        raise ConversionError(f"Template workbook could not be read: {exc}")
+    if SHEET_NAME not in wb.sheetnames:
+        raise ConversionError(
+            f"Template is missing the required '{SHEET_NAME}' sheet."
+        )
     ws = wb[SHEET_NAME]
 
     n = len(csv_rows)
@@ -233,10 +260,13 @@ def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
     return wb
 
 
-def safe_filename(name: str) -> str:
-    """Make a project name safe to use as a download file name."""
+def safe_filename(name: str, max_length: int = 120) -> str:
+    """Make a project name safe (and not too long) to use as a download name."""
     keep = "".join(c if c.isalnum() or c in " -_." else "_" for c in name).strip()
-    return (keep or "Job Cost Projection") + ".xlsx"
+    base = keep or "Job Cost Projection"
+    if len(base) + len(".xlsx") > max_length:
+        base = base[: max_length - len(".xlsx")].strip()
+    return base + ".xlsx"
 
 
 def convert_csv_to_workbook_bytes(

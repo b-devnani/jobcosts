@@ -11,6 +11,7 @@ Two surfaces:
 from __future__ import annotations
 
 import io
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -25,14 +26,26 @@ from .converter import ConversionError, convert_csv_to_workbook_bytes
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 
+# Hard cap on the uploaded CSV so a huge file can't exhaust memory. The template
+# only holds 146 data rows, so a real export is tiny; this is defence in depth.
+MAX_CSV_BYTES = 10 * 1024 * 1024  # 10 MB
+
 XLSX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
+
+log = logging.getLogger("uvicorn.error")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    if ADMIN_PASSWORD == "admin":
+        log.warning(
+            "ADMIN_PASSWORD is the insecure default 'admin'. Set the "
+            "ADMIN_PASSWORD environment variable to a strong value before "
+            "exposing this tool to anyone else."
+        )
     yield
 
 
@@ -113,6 +126,11 @@ async def generate(
     raw = await csv_file.read()
     if not raw:
         raise HTTPException(status_code=400, detail="The uploaded CSV is empty.")
+    if len(raw) > MAX_CSV_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"CSV file is too large (max {MAX_CSV_BYTES // (1024 * 1024)} MB).",
+        )
 
     project = db.get_project(project_id) if project_id else None
     if project_id and project is None:

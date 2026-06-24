@@ -115,3 +115,39 @@ def test_generate_rejects_bad_csv(client):
         files={"csv_file": ("bad.csv", b"a,b,c\n1,2,3", "text/csv")},
     )
     assert res.status_code == 422
+
+
+def test_generate_rejects_oversized_csv(client):
+    big = b"x," * (6 * 1024 * 1024)  # ~12 MB, over the 10 MB cap
+    res = client.post(
+        "/api/generate",
+        data={"name": "Big"},
+        files={"csv_file": ("big.csv", big, "text/csv")},
+    )
+    assert res.status_code == 413
+
+
+def test_update_is_atomic_under_concurrency(client):
+    """Concurrent updates to one project must not clobber each other's fields."""
+    import threading
+
+    pid = client.post(
+        "/api/projects", json={"name": "Race"}, headers=ADMIN
+    ).json()["id"]
+
+    def upd(field, value):
+        client.put(
+            f"/api/projects/{pid}", json={"name": "Race", field: value}, headers=ADMIN
+        )
+
+    threads = [
+        threading.Thread(target=upd, args=("orig_substantial_completion", "2025-01-01")),
+        threading.Thread(target=upd, args=("orig_final_completion", "2025-02-02")),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    # The row is still valid and the name is intact (no crash / corruption).
+    final = client.get("/api/projects").json()[0]
+    assert final["name"] == "Race"

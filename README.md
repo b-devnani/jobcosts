@@ -86,7 +86,10 @@ python3 -m pytest -q
 ## Notes & limits
 
 * Admin auth is a single shared password (sent as `X-Admin-Password`). It gates
-  project writes; swap in real auth before exposing publicly.
+  project writes; swap in real auth before exposing publicly. The app logs a
+  warning at startup if `ADMIN_PASSWORD` is left at the insecure default.
 * The template holds up to **146** data rows; larger CSVs are rejected with a
-  clear message.
+  clear message. Uploads are also capped at **10 MB**.
+* The uploaded CSV's key column headers are validated, so a non-Procore file is
+  rejected rather than silently mapped into the wrong template columns.
 * Date cells are written with the template's `mm-dd-yy` format.

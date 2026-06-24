@@ -55,6 +55,14 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     return {k: row[k] for k in row.keys()}
 
 
+def _fetch(conn: sqlite3.Connection, project_id: int) -> Optional[dict]:
+    """Read a single project using an already-open connection."""
+    row = conn.execute(
+        "SELECT * FROM projects WHERE id = ?", (project_id,)
+    ).fetchone()
+    return _row_to_dict(row) if row else None
+
+
 def list_projects() -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
@@ -65,10 +73,7 @@ def list_projects() -> list[dict]:
 
 def get_project(project_id: int) -> Optional[dict]:
     with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM projects WHERE id = ?", (project_id,)
-        ).fetchone()
-        return _row_to_dict(row) if row else None
+        return _fetch(conn, project_id)
 
 
 def create_project(data: dict) -> dict:
@@ -82,21 +87,22 @@ def create_project(data: dict) -> dict:
                 VALUES (?, ?, ?, ?, ?)""",
             values,
         )
-        new_id = cur.lastrowid
-    return get_project(new_id)
+        return _fetch(conn, cur.lastrowid)
 
 
 def update_project(project_id: int, data: dict) -> Optional[dict]:
-    existing = get_project(project_id)
-    if existing is None:
-        return None
-    name = (data.get("name") or existing["name"]).strip()
-    if not name:
-        raise ValueError("Project name cannot be empty.")
-    values = [name] + [
-        _norm_date(data.get(f, existing[f])) for f in DATE_FIELDS
-    ] + [project_id]
+    # The whole read-modify-write runs under the lock so concurrent updates to
+    # the same project cannot clobber each other with stale field values.
     with _lock, _connect() as conn:
+        existing = _fetch(conn, project_id)
+        if existing is None:
+            return None
+        name = (data.get("name") or existing["name"]).strip()
+        if not name:
+            raise ValueError("Project name cannot be empty.")
+        values = [name] + [
+            _norm_date(data.get(f, existing[f])) for f in DATE_FIELDS
+        ] + [project_id]
         conn.execute(
             f"""UPDATE projects
                    SET name = ?,
@@ -105,7 +111,7 @@ def update_project(project_id: int, data: dict) -> Optional[dict]:
                  WHERE id = ?""",
             values,
         )
-    return get_project(project_id)
+        return _fetch(conn, project_id)
 
 
 def delete_project(project_id: int) -> bool:

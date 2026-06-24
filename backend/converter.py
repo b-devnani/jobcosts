@@ -82,7 +82,8 @@ class ProjectInfo:
     """The "remaining info" that does not come from the CSV.
 
     ``name`` becomes the workbook file name (and therefore the title cell).
-    The four dates land in the template's milestone cells.
+    The four milestone dates land in their template cells; the last-pay-app
+    figures fill the "Contract amount on last pay app and month" cells.
     """
 
     name: str
@@ -90,6 +91,8 @@ class ProjectInfo:
     orig_final_completion: date | None = None
     current_substantial_completion: date | None = None
     current_final_completion: date | None = None
+    contract_amount_last_pay_app: float | None = None
+    month_last_pay_app: date | None = None
 
 
 def _to_number(raw: str) -> float | str | None:
@@ -166,6 +169,20 @@ def parse_budget_csv(content: str | bytes) -> list[list]:
     return out
 
 
+def _coerce_number(value) -> float | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace(",", "").replace("$", "")
+    if text == "":
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        raise ConversionError(f"Could not understand amount value: {value!r}")
+
+
 def _coerce_date(value) -> date | None:
     if value in (None, ""):
         return None
@@ -189,6 +206,12 @@ def _set_date(ws: Worksheet, coord: str, value: date | None) -> None:
     cell = ws[coord]
     cell.value = value
     cell.number_format = DATE_FORMAT
+
+
+def _set_number(ws: Worksheet, coord: str, value: float | None) -> None:
+    if value is None:
+        return
+    ws[coord].value = value  # keeps the template's existing currency format
 
 
 def _rewrite_formulas_for_totals(ws: Worksheet, data_rows: int) -> None:
@@ -257,6 +280,10 @@ def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo):
     _set_date(ws, "K3", project.current_substantial_completion)
     _set_date(ws, "K4", project.current_final_completion)
 
+    # "Contract amount on last pay app and month" header cells.
+    _set_number(ws, "F3", project.contract_amount_last_pay_app)
+    _set_date(ws, "G3", project.month_last_pay_app)
+
     return wb
 
 
@@ -276,6 +303,8 @@ def convert_csv_to_workbook_bytes(
     orig_final_completion=None,
     current_substantial_completion=None,
     current_final_completion=None,
+    contract_amount_last_pay_app=None,
+    month_last_pay_app=None,
 ) -> tuple[bytes, str]:
     """High-level entry point used by the web layer.
 
@@ -287,6 +316,8 @@ def convert_csv_to_workbook_bytes(
         orig_final_completion=_coerce_date(orig_final_completion),
         current_substantial_completion=_coerce_date(current_substantial_completion),
         current_final_completion=_coerce_date(current_final_completion),
+        contract_amount_last_pay_app=_coerce_number(contract_amount_last_pay_app),
+        month_last_pay_app=_coerce_date(month_last_pay_app),
     )
     rows = parse_budget_csv(csv_content)
     wb = build_workbook(rows, project)

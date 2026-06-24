@@ -113,6 +113,8 @@ async def generate(
     orig_final_completion: str | None = Form(default=None),
     current_substantial_completion: str | None = Form(default=None),
     current_final_completion: str | None = Form(default=None),
+    contract_amount_last_pay_app: str | None = Form(default=None),
+    month_last_pay_app: str | None = Form(default=None),
 ):
     """Build the workbook from the uploaded CSV plus project milestone data.
 
@@ -159,6 +161,10 @@ async def generate(
             current_final_completion=pick(
                 "current_final_completion", current_final_completion
             ),
+            contract_amount_last_pay_app=pick(
+                "contract_amount_last_pay_app", contract_amount_last_pay_app
+            ),
+            month_last_pay_app=pick("month_last_pay_app", month_last_pay_app),
         )
     except ConversionError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

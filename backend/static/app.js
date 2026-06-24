@@ -6,11 +6,28 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-const DATE_FIELDS = [
+// Editable project columns (admin grid), in display order.
+const PROJECT_FIELDS = [
+  { key: "project_number", label: "Project #", type: "text" },
+  { key: "name", label: "Name", type: "text", required: true },
+  { key: "orig_substantial_completion", label: "Orig. Substantial", type: "date" },
+  { key: "orig_final_completion", label: "Orig. Final", type: "date" },
+  { key: "current_substantial_completion", label: "Current Substantial", type: "date" },
+  { key: "current_final_completion", label: "Current Final", type: "date" },
+  { key: "contract_amount_last_pay_app", label: "Contract $ (last pay app)", type: "number" },
+  { key: "month_last_pay_app", label: "Month (last pay app)", type: "date" },
+];
+
+// Fields the Generate form can supply/override (the project number is only an
+// identifier and is not written into the workbook).
+const GENERATE_FIELDS = [
+  "name",
   "orig_substantial_completion",
   "orig_final_completion",
   "current_substantial_completion",
   "current_final_completion",
+  "contract_amount_last_pay_app",
+  "month_last_pay_app",
 ];
 
 let projects = [];
@@ -68,15 +85,20 @@ async function loadProjects() {
   sel.innerHTML =
     '<option value="">— Manual entry (no saved project) —</option>' +
     projects
-      .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+      .map((p) => {
+        const label = p.project_number
+          ? `${p.project_number} — ${p.name}`
+          : p.name;
+        return `<option value="${p.id}">${escapeHtml(label)}</option>`;
+      })
       .join("");
   if (current) sel.value = current;
 }
 
 function fillMilestones(project) {
-  $("#m_name").value = project ? project.name : "";
-  DATE_FIELDS.forEach((f) => {
-    $("#m_" + f).value = project && project[f] ? project[f] : "";
+  GENERATE_FIELDS.forEach((f) => {
+    const el = document.getElementById("m_" + f);
+    if (el) el.value = project && project[f] ? project[f] : "";
   });
 }
 
@@ -120,9 +142,9 @@ $("#generate-btn").addEventListener("click", async () => {
   fd.append("csv_file", selectedFile);
   const pid = $("#project-select").value;
   if (pid) fd.append("project_id", pid);
-  if ($("#m_name").value) fd.append("name", $("#m_name").value);
-  DATE_FIELDS.forEach((f) => {
-    const v = $("#m_" + f).value;
+  GENERATE_FIELDS.forEach((f) => {
+    const el = document.getElementById("m_" + f);
+    const v = el ? el.value.trim() : "";
     if (v) fd.append(f, v);
   });
 
@@ -209,6 +231,13 @@ $("#add-row-btn").addEventListener("click", () => {
   renderGrid({ id: null, name: "", _new: true });
 });
 
+function renderGridHead() {
+  const head = $("#projects-head");
+  head.innerHTML =
+    PROJECT_FIELDS.map((f) => `<th>${escapeHtml(f.label)}</th>`).join("") +
+    '<th class="col-actions">Actions</th>';
+}
+
 async function renderGrid(draftRow) {
   const status = $("#admin-grid-status");
   try {
@@ -217,6 +246,7 @@ async function renderGrid(draftRow) {
     setStatus(status, "Could not load projects: " + e.message, "err");
     return;
   }
+  renderGridHead();
   const body = $("#projects-body");
   body.innerHTML = "";
 
@@ -224,8 +254,9 @@ async function renderGrid(draftRow) {
   if (draftRow) rows.push(draftRow);
 
   if (rows.length === 0) {
-    body.innerHTML =
-      '<tr class="empty-row"><td colspan="6">No projects yet. Click “+ Add project”.</td></tr>';
+    body.innerHTML = `<tr class="empty-row"><td colspan="${
+      PROJECT_FIELDS.length + 1
+    }">No projects yet. Click “+ Add project”.</td></tr>`;
     return;
   }
 
@@ -236,14 +267,14 @@ function buildRow(p) {
   const tr = document.createElement("tr");
   tr.dataset.id = p.id == null ? "" : p.id;
 
-  const fields = ["name", ...DATE_FIELDS];
-  fields.forEach((f) => {
+  PROJECT_FIELDS.forEach((f) => {
     const td = document.createElement("td");
     const input = document.createElement("input");
-    input.type = f === "name" ? "text" : "date";
-    input.value = p[f] || "";
-    input.dataset.field = f;
-    if (f === "name") input.placeholder = "Project name";
+    input.type = f.type;
+    if (f.type === "number") input.step = "0.01";
+    input.value = p[f.key] != null ? p[f.key] : "";
+    input.dataset.field = f.key;
+    if (f.required) input.placeholder = "Required";
     input.addEventListener("input", () => {
       td.classList.add("dirty");
       tr.querySelector(".btn-save").disabled = false;

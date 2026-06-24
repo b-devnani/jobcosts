@@ -74,6 +74,20 @@ main { max-width: 980px; margin: 28px auto; padding: 0 20px; }
   margin-bottom: 20px;
 }
 .card.narrow { max-width: 420px; }
+.card.simple { max-width: 540px; margin: 48px auto; }
+.card.simple .field { margin-bottom: 18px; }
+.card.simple select { padding: 12px; font-size: 15px; }
+
+.center { text-align: center; }
+
+.primary.big {
+  width: 100%;
+  padding: 15px;
+  font-size: 16px;
+  margin-top: 4px;
+}
+.card.simple .hint { margin: 16px 0 0; }
+.card.simple .status { display: block; margin-top: 12px; min-height: 1.2em; }
 .card h2 { margin: 0 0 4px; font-size: 16px; }
 .hint { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -154,6 +168,9 @@ button { font-family: inherit; }
 /* ---- table ---- */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
+/* Admin grid auto-fits: columns size to content (set per-field in app.js). */
+#projects-table { width: auto; table-layout: auto; }
+#projects-table td input { width: auto; }
 th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
 td input {

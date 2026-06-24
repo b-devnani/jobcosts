@@ -25,13 +25,28 @@ project:
 
 | Template cell | Field |
 |---------------|-------|
-| `I3` | Original Substantial Comp Date |
-| `I4` | Original Final Completion Date |
-| `K3` | Current Substantial Comp Date |
-| `K4` | Current Final Comp Date |
-| `F3` | Contract amount on last pay app |
-| `G3` | Month of last pay app |
-| file name → title cell `A1` | Project name |
+| `I2` | Original Substantial Completion Date |
+| `I3` | Original Final Completion Date |
+| `K2` | Current Substantial Completion Date |
+| `K3` | Current Final Completion Date |
+| `F2` | Contract amount on last pay app |
+| `G2` | Month of last pay app |
+| `A1` | Title — the download file name |
+
+The workbook downloads as **`<Project Name> Job Costs MMDDYY.xlsx`** (today's
+date), and `A1` shows that same name. The output is built from the **BURLING
+template** (`backend/template/Job_Cost_Projection_Template.xlsx`), which carries
+all of the presentation: the embedded logo, the header/summary layout, the
+grey header row, blue **Committed Costs** and green **Estimated Cost at
+Completion** columns, the bold totals row (top border + double bottom), the
+per-row formulas (Estimated Cost to Complete = `MAX(revised, committed) −
+job-to-date`), and the print setup (landscape, narrow margins, fit all columns
+to one page wide, repeat rows 1–6, "Page x of x" footer). The converter only
+writes the data, the milestone dates, the last-pay-app figures and the title —
+formulas and number formats are never altered.
+
+> The template embeds a JPEG logo, so generating requires **Pillow** (in
+> `requirements.txt`); openpyxl uses it to round-trip the image.
 
 The project list is **seeded on first run** from `backend/seed/projects_seed.csv`
 (a Company-Home style export of project numbers, names and any known dates), so
@@ -55,8 +70,8 @@ pip install -r requirements.txt
 
 Then open <http://127.0.0.1:8000>.
 
-* **Generate** tab — choose a project (or "Manual entry"), drop in the CSV,
-  click **Generate & Download**.
+* **Generate** tab — choose a project, then click **Upload CSV** and pick the
+  file. The workbook builds and downloads automatically (no extra clicks).
 * **Admin** tab — sign in with the admin password, then add / edit / delete
   projects in the grid.
 

@@ -96,12 +96,13 @@ def test_generate_with_project(client):
     assert res.headers["content-type"] == (
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    assert 'filename="Generated Job.xlsx"' in res.headers["content-disposition"]
+    assert 'filename="Generated Job Job Costs ' in res.headers["content-disposition"]
+    assert res.headers["content-disposition"].endswith('.xlsx"')
     # Returned bytes are a real xlsx (zip) with the data filled in.
     from openpyxl import load_workbook
     ws = load_workbook(io.BytesIO(res.content))["Job Cost"]
-    assert ws["A8"].value == "1-020 - Superintendent"
-    assert ws["I3"].value.strftime("%Y-%m-%d") == "2025-09-15"
+    assert ws["A7"].value == "1-020 - Superintendent"
+    assert ws["I2"].value.strftime("%Y-%m-%d") == "2025-09-15"  # Original Substantial
 
 
 def test_generate_manual_entry(client):
@@ -112,7 +113,7 @@ def test_generate_manual_entry(client):
         files={"csv_file": ("budget.csv", csv_bytes, "text/csv")},
     )
     assert res.status_code == 200
-    assert 'filename="Manual Job.xlsx"' in res.headers["content-disposition"]
+    assert 'filename="Manual Job Job Costs ' in res.headers["content-disposition"]
 
 
 def test_generate_rejects_bad_csv(client):

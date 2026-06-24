@@ -24,61 +24,20 @@
   <main>
     <!-- ===================== GENERATE ===================== -->
     <section id="generate" class="panel active">
-      <div class="card">
-        <h2>1. Choose a project</h2>
-        <p class="hint">Milestone dates and the workbook name come from the project record.</p>
+      <div class="card simple">
         <div class="field">
           <label for="project-select">Project</label>
           <select id="project-select">
             <option value="">— Manual entry (no saved project) —</option>
           </select>
         </div>
-
-        <div id="milestones" class="milestones">
-          <div class="field">
-            <label>Original Substantial Comp Date</label>
-            <input type="date" id="m_orig_substantial_completion" />
-          </div>
-          <div class="field">
-            <label>Original Final Completion Date</label>
-            <input type="date" id="m_orig_final_completion" />
-          </div>
-          <div class="field">
-            <label>Current Substantial Comp Date</label>
-            <input type="date" id="m_current_substantial_completion" />
-          </div>
-          <div class="field">
-            <label>Current Final Comp Date</label>
-            <input type="date" id="m_current_final_completion" />
-          </div>
-          <div class="field">
-            <label>Contract amount on last pay app</label>
-            <input type="number" step="0.01" id="m_contract_amount_last_pay_app" placeholder="$ (optional)" />
-          </div>
-          <div class="field">
-            <label>Month of last pay app</label>
-            <input type="date" id="m_month_last_pay_app" />
-          </div>
-          <div class="field">
-            <label>Project / Workbook name</label>
-            <input type="text" id="m_name" placeholder="Used as the .xlsx file name" />
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>2. Upload the CSV</h2>
-        <p class="hint">The Procore budget-detail export (columns A&ndash;I are mapped into the template).</p>
-        <div id="dropzone" class="dropzone">
-          <input type="file" id="csv-input" accept=".csv,text/csv" hidden />
-          <p class="dz-text">Drop the CSV here or <span class="link">browse</span></p>
-          <p id="file-name" class="file-name"></p>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="generate-btn" class="primary" disabled>Generate &amp; Download</button>
-        <span id="generate-status" class="status"></span>
+        <input type="file" id="csv-input" accept=".csv,text/csv" hidden />
+        <button id="upload-btn" class="primary big">Upload CSV</button>
+        <p class="hint center">
+          Choose a project, then pick your budget CSV — the workbook downloads
+          automatically.
+        </p>
+        <p id="generate-status" class="status center"></p>
       </div>
     </section>
 

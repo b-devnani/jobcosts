@@ -28,6 +28,12 @@ def client(tmp_path, monkeypatch):
 ADMIN = {"X-Admin-Password": "secret"}
 
 
+def test_healthz(client):
+    res = client.get("/healthz")
+    assert res.status_code == 200
+    assert res.json() == {"status": "ok"}
+
+
 def test_projects_empty(client):
     assert client.get("/api/projects").json() == []
 

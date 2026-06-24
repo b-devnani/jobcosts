@@ -87,6 +87,40 @@ tests/
   sample/           Sample budget-detail CSV
 ```
 
+## Deploy (host it online)
+
+The app is one FastAPI process that serves both the API and the frontend, plus
+a SQLite file for the project list. Three things matter when hosting:
+
+1. **Bind to `0.0.0.0` and the platform port:**
+   `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`
+2. **Persist the SQLite DB** on a disk/volume and point `JOBCOSTS_DB` at it
+   (otherwise admin edits reset on each restart; seeded projects still return).
+3. **Set a strong `ADMIN_PASSWORD`** and use HTTPS (the admin password travels
+   in a request header). Managed hosts provide HTTPS automatically.
+
+### Render (one click)
+
+This repo ships a [`render.yaml`](render.yaml) blueprint. In Render: **New →
+Blueprint → connect this repo**. It provisions a web service with a 1 GB
+persistent disk at `/data`, sets `JOBCOSTS_DB=/data/jobcosts.db`, and generates
+a strong `ADMIN_PASSWORD` (read it in the dashboard's Environment tab). A health
+check is exposed at `/healthz`.
+
+> The persistent disk needs a paid (starter+) instance. On the free tier, remove
+> the `disk:` block and `JOBCOSTS_DB` — the DB then re-seeds on every restart.
+
+### Anywhere with Docker (Fly.io, Railway, a VPS, …)
+
+A [`Dockerfile`](Dockerfile) is included:
+
+```bash
+docker build -t jobcosts .
+docker run -p 8000:8000 -e ADMIN_PASSWORD=change-me -v jobcosts-data:/data jobcosts
+```
+
+The named volume `jobcosts-data` keeps the project database across restarts.
+
 ## Tests
 
 ```bash

@@ -55,6 +55,9 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
+    # Create the directory for the database file if it does not exist yet
+    # (e.g. a freshly mounted persistent disk at /data).
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _lock, _connect() as conn:
         conn.execute(
             """

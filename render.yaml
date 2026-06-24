@@ -1,20 +1,31 @@
-# Render Blueprint — deploy the Job Cost Projection tool with one click.
+# Render Blueprint — deploy the Job Cost Projection tool for FREE.
 # Docs: https://render.com/docs/blueprint-spec
 #
 # In the Render dashboard: New → Blueprint → connect this repo. Render reads
-# this file and provisions the service below.
+# this file and provisions the free web service below.
 #
-# NOTE: the persistent `disk` keeps admin edits across deploys/restarts and
-# requires a paid instance type (starter or higher). To run on the free tier,
-# delete the `disk:` block and the `JOBCOSTS_DB` env var — the app will then use
-# an ephemeral database that re-seeds the project list on every restart (admin
-# edits are not retained).
+# Free tier notes:
+#  - No persistent disk: the SQLite database is ephemeral, so the project
+#    dropdown re-seeds from backend/seed/projects_seed.csv on every restart and
+#    admin edits made in the Admin tab are NOT kept. This is fine if you rely on
+#    the seeded projects and type any one-off dates in the Generate form (which
+#    does not require saving a project).
+#  - Free instances sleep after ~15 min idle and cold-start (~30-60s) on the
+#    next request.
+#
+# ---- To make admin edits persist (paid: starter+) ----
+# Change `plan: free` to `plan: starter`, add `JOBCOSTS_DB=/data/jobcosts.db`
+# to envVars, and add this block under the service:
+#   disk:
+#     name: jobcosts-data
+#     mountPath: /data
+#     sizeGB: 1
 
 services:
   - type: web
     name: jobcosts
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
@@ -22,14 +33,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
-      # Store the SQLite database on the persistent disk mounted below.
-      - key: JOBCOSTS_DB
-        value: /data/jobcosts.db
       # Render generates a strong admin password; read it in the dashboard
       # (Environment tab) after the first deploy.
       - key: ADMIN_PASSWORD
         generateValue: true
-    disk:
-      name: jobcosts-data
-      mountPath: /data
-      sizeGB: 1

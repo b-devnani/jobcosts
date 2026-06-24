@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Cost Projection Tool</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▦</span>
+      <div>
+        <h1>Job Cost Projection</h1>
+        <p class="subtitle">Upload a budget-detail CSV &rarr; download a filled-in workbook</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="generate">Generate</button>
+      <button class="tab" data-tab="admin">Admin</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===================== GENERATE ===================== -->
+    <section id="generate" class="panel active">
+      <div class="card">
+        <h2>1. Choose a project</h2>
+        <p class="hint">Milestone dates and the workbook name come from the project record.</p>
+        <div class="field">
+          <label for="project-select">Project</label>
+          <select id="project-select">
+            <option value="">— Manual entry (no saved project) —</option>
+          </select>
+        </div>
+
+        <div id="milestones" class="milestones">
+          <div class="field">
+            <label>Original Substantial Comp Date</label>
+            <input type="date" id="m_orig_substantial_completion" />
+          </div>
+          <div class="field">
+            <label>Original Final Completion Date</label>
+            <input type="date" id="m_orig_final_completion" />
+          </div>
+          <div class="field">
+            <label>Current Substantial Comp Date</label>
+            <input type="date" id="m_current_substantial_completion" />
+          </div>
+          <div class="field">
+            <label>Current Final Comp Date</label>
+            <input type="date" id="m_current_final_completion" />
+          </div>
+          <div class="field">
+            <label>Project / Workbook name</label>
+            <input type="text" id="m_name" placeholder="Used as the .xlsx file name" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2. Upload the CSV</h2>
+        <p class="hint">The Procore budget-detail export (columns A&ndash;I are mapped into the template).</p>
+        <div id="dropzone" class="dropzone">
+          <input type="file" id="csv-input" accept=".csv,text/csv" hidden />
+          <p class="dz-text">Drop the CSV here or <span class="link">browse</span></p>
+          <p id="file-name" class="file-name"></p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="generate-btn" class="primary" disabled>Generate &amp; Download</button>
+        <span id="generate-status" class="status"></span>
+      </div>
+    </section>
+
+    <!-- ===================== ADMIN ===================== -->
+    <section id="admin" class="panel">
+      <div id="admin-login" class="card narrow">
+        <h2>Admin sign-in</h2>
+        <p class="hint">Adding or editing projects requires the admin password.</p>
+        <div class="field">
+          <label for="admin-password">Password</label>
+          <input type="password" id="admin-password" placeholder="Admin password" />
+        </div>
+        <button id="admin-login-btn" class="primary">Sign in</button>
+        <span id="admin-login-status" class="status"></span>
+      </div>
+
+      <div id="admin-grid" class="card hidden">
+        <div class="card-head">
+          <h2>Projects</h2>
+          <div>
+            <button id="add-row-btn" class="secondary">+ Add project</button>
+            <button id="admin-signout-btn" class="ghost">Sign out</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="projects-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Orig. Substantial</th>
+                <th>Orig. Final</th>
+                <th>Current Substantial</th>
+                <th>Current Final</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="projects-body"></tbody>
+          </table>
+        </div>
+        <span id="admin-grid-status" class="status"></span>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

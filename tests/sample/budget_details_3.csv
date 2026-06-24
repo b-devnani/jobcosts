@@ -1,0 +1,65 @@
+Cost Code Tier 1,Cost Code Tier 2,Cost Type,Budget Code,Budget Code Description,Original Budget Amount,Budget Modifications,Approved COs,Revised Budget,Committed Costs,Direct Cost,Job to date Costs,Forecast To Complete,Estimated Cost at Completion,Projected over Under
+None,None,None,"","",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-020 - Superintendent,L - Labor,1-020.L,Superintendent.Labor,134000.0,-30500.0,0.0,103500.0,0.0,39358.6,39358.6,64141.4,103500.0,0.0
+1 - GENERAL CONDITIONS,1-020 - Superintendent,M - Material,1-020.M,Superintendent.Material,10600.0,0.0,0.0,10600.0,0.0,2610.52,2610.52,7989.48,10600.0,0.0
+1 - GENERAL CONDITIONS,1-020 - Superintendent,O - Other,1-020.O,Superintendent.Other,23375.0,-21375.0,0.0,2000.0,0.0,632.82,632.82,1367.18,2000.0,0.0
+1 - GENERAL CONDITIONS,1-043 - Procore,O - Other,1-043.O,Procore.Other,9950.0,2050.0,0.0,12000.0,0.0,12000.0,12000.0,0.0,12000.0,0.0
+1 - GENERAL CONDITIONS,1-045 - Insurance,O - Other,1-045.O,Insurance.Other,65600.0,0.0,0.0,65600.0,0.0,22541.0,22541.0,43059.0,65600.0,0.0
+1 - GENERAL CONDITIONS,1-047 - Legal Costs,O - Other,1-047.O,Legal Costs.Other,3300.0,0.0,0.0,3300.0,0.0,3104.0,3104.0,196.0,3300.0,0.0
+1 - GENERAL CONDITIONS,1-050 - Warranty,O - Other,1-050.O,Warranty.Other,4000.0,0.0,0.0,4000.0,0.0,0.0,0.0,4000.0,4000.0,0.0
+1 - GENERAL CONDITIONS,1-065 - Permits - General,O - Other,1-065.O,Permits - General.Other,0.0,0.0,0.0,0.0,0.0,9030.0,9030.0,0.0,9030.0,-9030.0
+1 - GENERAL CONDITIONS,1-100 - Project Engineer,L - Labor,1-100.L,Project Engineer.Labor,86700.0,25200.0,0.0,111900.0,0.0,38792.08,38792.08,73107.92,111900.0,0.0
+1 - GENERAL CONDITIONS,1-100 - Project Engineer,M - Material,1-100.M,Project Engineer.Material,3600.0,0.0,0.0,3600.0,0.0,0.0,0.0,3600.0,3600.0,0.0
+1 - GENERAL CONDITIONS,1-100 - Project Engineer,O - Other,1-100.O,Project Engineer.Other,15300.0,0.0,0.0,15300.0,0.0,4701.49,4701.49,10598.51,15300.0,0.0
+1 - GENERAL CONDITIONS,1-100 - Project Engineer,S - Subcontracts,1-100.S,Project Engineer.Subcontracts,0.0,44300.0,0.0,44300.0,0.0,17340.0,17340.0,26960.0,44300.0,0.0
+1 - GENERAL CONDITIONS,1-110 - Project Management,L - Labor,1-110.L,Project Management.Labor,179000.0,18900.0,0.0,197900.0,0.0,97070.59,97070.59,100829.41,197900.0,0.0
+1 - GENERAL CONDITIONS,1-110 - Project Management,M - Material,1-110.M,Project Management.Material,11750.0,0.0,0.0,11750.0,0.0,8752.11,8752.11,2997.89,11750.0,0.0
+1 - GENERAL CONDITIONS,1-110 - Project Management,O - Other,1-110.O,Project Management.Other,31750.0,-11450.0,0.0,20300.0,0.0,8621.46,8621.46,11678.54,20300.0,0.0
+1 - GENERAL CONDITIONS,1-110 - Project Management,S - Subcontracts,1-110.S,Project Management.Subcontracts,0.0,3660.0,0.0,3660.0,0.0,3660.0,3660.0,0.0,3660.0,0.0
+1 - GENERAL CONDITIONS,1-130 - Project Accounting,L - Labor,1-130.L,Project Accounting.Labor,22950.0,0.0,0.0,22950.0,0.0,5458.77,5458.77,17491.23,22950.0,0.0
+1 - GENERAL CONDITIONS,1-130 - Project Accounting,M - Material,1-130.M,Project Accounting.Material,4500.0,0.0,0.0,4500.0,0.0,237.0,237.0,4263.0,4500.0,0.0
+1 - GENERAL CONDITIONS,1-130 - Project Accounting,O - Other,1-130.O,Project Accounting.Other,4050.0,0.0,0.0,4050.0,0.0,548.53,548.53,3501.47,4050.0,0.0
+1 - GENERAL CONDITIONS,1-140 - Temporary Sanitation,M - Material,1-140.M,Temporary Sanitation.Material,4680.0,0.0,0.0,4680.0,0.0,463.92,463.92,4216.08,4680.0,0.0
+1 - GENERAL CONDITIONS,1-150 - Design,S - Subcontracts,1-150.S,Design.Subcontracts,740000.0,0.0,0.0,740000.0,740000.0,663715.25,663715.25,0.0,1403715.25,-663715.25
+1 - GENERAL CONDITIONS,1-260 - Office & Sheds,M - Material,1-260.M,Office & Sheds.Material,5700.0,-3700.0,0.0,2000.0,0.0,1189.2,1189.2,810.8,2000.0,0.0
+1 - GENERAL CONDITIONS,1-270 - Office Supplies,M - Material,1-270.M,Office Supplies.Material,6100.0,3900.0,0.0,10000.0,0.0,8475.52,8475.52,1524.48,10000.0,0.0
+1 - GENERAL CONDITIONS,1-290 - Telephone/Internet/Email/IT,M - Material,1-290.M,Telephone/Internet/Email/IT.Material,14400.0,3600.0,0.0,18000.0,0.0,12622.31,12622.31,5377.69,18000.0,0.0
+1 - GENERAL CONDITIONS,1-370 - Safety,M - Material,1-370.M,Safety.Material,0.0,5000.0,0.0,5000.0,0.0,1120.98,1120.98,3879.02,5000.0,0.0
+1 - GENERAL CONDITIONS,1-370 - Safety,O - Other,1-370.O,Safety.Other,11100.0,-11100.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-510 - Temp Utilities,M - Material,1-510.M,Temp Utilities.Material,0.0,1500.0,0.0,1500.0,0.0,1500.0,1500.0,0.0,1500.0,0.0
+1 - GENERAL CONDITIONS,1-528 - Trash Chute,M - Material,1-528.M,Trash Chute.Material,2000.0,-2000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-530 - Barriers & Enclosure,M - Material,1-530.M,Barriers & Enclosure.Material,8000.0,-8000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-550 - Small Tools,M - Material,1-550.M,Small Tools.Material,2600.0,2400.0,0.0,5000.0,0.0,3747.25,3747.25,1252.75,5000.0,0.0
+1 - GENERAL CONDITIONS,1-610 - Daily Clean-Up,L - Labor,1-610.L,Daily Clean-Up.Labor,0.0,6460.34,0.0,6460.34,0.0,6460.34,6460.34,0.0,6460.34,0.0
+1 - GENERAL CONDITIONS,1-610 - Daily Clean-Up,M - Material,1-610.M,Daily Clean-Up.Material,0.0,300.0,0.0,300.0,0.0,64.3,64.3,235.7,300.0,0.0
+1 - GENERAL CONDITIONS,1-610 - Daily Clean-Up,S - Subcontracts,1-610.S,Daily Clean-Up.Subcontracts,0.0,232.0,0.0,232.0,0.0,232.0,232.0,0.0,232.0,0.0
+1 - GENERAL CONDITIONS,1-615 - Dumpsters,M - Material,1-615.M,Dumpsters.Material,9000.0,-9000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-710 - Final Cleaning,S - Subcontracts,1-710.S,Final Cleaning.Subcontracts,11250.0,-11250.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1 - GENERAL CONDITIONS,1-720 - Project Documents,M - Material,1-720.M,Project Documents.Material,2500.0,0.0,0.0,2500.0,0.0,0.0,0.0,2500.0,2500.0,0.0
+1 - GENERAL CONDITIONS,1-721 - Matterport,M - Material,1-721.M,Matterport.Material,5000.0,-2500.0,0.0,2500.0,0.0,1288.63,1288.63,1211.37,2500.0,0.0
+1 - GENERAL CONDITIONS,1-800 - Overhead & Profit,O - Other,1-800.O,Overhead & Profit.Other,379620.0,0.0,0.0,379620.0,0.0,0.0,0.0,379620.0,379620.0,0.0
+1 - GENERAL CONDITIONS,1-900 - Contingency,O - Other,1-900.O,Contingency.Other,23545.0,-21264.34,0.0,2280.66,0.0,0.0,0.0,2280.66,2280.66,0.0
+1 - GENERAL CONDITIONS,1-903 - Design-Builders Contingency,O - Other,1-903.O,Design-Builders Contingency.Other,250000.0,0.0,-39350.02,210649.98,0.0,0.0,0.0,210649.98,210649.98,0.0
+1 - GENERAL CONDITIONS,1-904 - Commision's Contingency,O - Other,1-904.O,Commision's Contingency.Other,250000.0,0.0,0.0,250000.0,0.0,0.0,0.0,250000.0,250000.0,0.0
+1 - GENERAL CONDITIONS,1-905 - Subcontractor Costs,S - Subcontracts,1-905.S,Subcontractor Costs.Subcontracts,5262000.0,-5065240.0,-194943.21,1816.79,0.0,0.0,0.0,1816.79,1816.79,0.0
+1 - GENERAL CONDITIONS,1-906 - Camera Allowance,O - Other,1-906.O,Camera Allowance.Other,25000.0,0.0,0.0,25000.0,0.0,0.0,0.0,25000.0,25000.0,0.0
+1 - GENERAL CONDITIONS,1-907 - FF&E Allowance,O - Other,1-907.O,FF&E Allowance.Other,500000.0,0.0,0.0,500000.0,0.0,0.0,0.0,500000.0,500000.0,0.0
+1 - GENERAL CONDITIONS,1-960 - Bond,O - Other,1-960.O,Bond.Other,56700.0,11637.0,0.0,68337.0,0.0,68337.0,68337.0,0.0,68337.0,0.0
+2 - SITEWORK,2-070 - Selective Demolition,S - Subcontracts,2-070.S,Selective Demolition.Subcontracts,0.0,120865.0,0.0,120865.0,120865.0,0.0,90800.0,0.0,120865.0,0.0
+3 - CONCRETE,3-310 - Structural Concrete,S - Subcontracts,3-310.S,Structural Concrete.Subcontracts,0.0,24000.0,907.0,24907.0,24907.0,0.0,0.0,0.0,24907.0,0.0
+3 - CONCRETE,3-375 - Concrete Sealers,S - Subcontracts,3-375.S,Concrete Sealers.Subcontracts,0.0,0.0,0.0,0.0,12400.0,0.0,0.0,0.0,12400.0,-12400.0
+4 - MASONRY,4-210 - Brick Unit Masonry,S - Subcontracts,4-210.S,Brick Unit Masonry.Subcontracts,0.0,0.0,12000.0,12000.0,12000.0,0.0,0.0,0.0,12000.0,0.0
+5 - METALS,5-050 - Metal Fabrications,S - Subcontracts,5-050.S,Metal Fabrications.Subcontracts,0.0,60000.0,0.0,60000.0,60000.0,0.0,50000.0,0.0,60000.0,0.0
+6 - WOOD & PLASTICS,6-220 - Millwork,S - Subcontracts,6-220.S,Millwork.Subcontracts,0.0,142000.0,0.0,142000.0,142000.0,0.0,0.0,0.0,142000.0,0.0
+7 - THERMAL & MOISTURE PROTECTION,7-540 - Fluid Applied Roof,S - Subcontracts,7-540.S,Fluid Applied Roof.Subcontracts,0.0,27900.0,2648.0,30548.0,30548.0,0.0,0.0,0.0,30548.0,0.0
+8 - DOORS & WINDOWS,8-810 - Glass,S - Subcontracts,8-810.S,Glass.Subcontracts,0.0,0.0,181777.0,181777.0,135030.0,0.0,0.0,46747.0,181777.0,0.0
+9 - FINISHES,9-250 - Drywall,S - Subcontracts,9-250.S,Drywall.Subcontracts,0.0,716920.0,0.0,716920.0,716920.0,0.0,29000.0,0.0,716920.0,0.0
+9 - FINISHES,9-310 - Floor Tile,S - Subcontracts,9-310.S,Floor Tile.Subcontracts,0.0,78000.0,0.0,78000.0,78000.0,0.0,0.0,0.0,78000.0,0.0
+9 - FINISHES,9-660 - Resilient Tile Floor,S - Subcontracts,9-660.S,Resilient Tile Floor.Subcontracts,0.0,300000.0,0.0,300000.0,306000.0,0.0,0.0,0.0,306000.0,-6000.0
+9 - FINISHES,9-920 - Painting - Interior,S - Subcontracts,9-920.S,Painting - Interior.Subcontracts,0.0,79000.0,0.0,79000.0,79000.0,0.0,0.0,0.0,79000.0,0.0
+14 - CONVEYING SYSTEMS,14-240 - Hydraulic Elevators,S - Subcontracts,14-240.S,Hydraulic Elevators.Subcontracts,0.0,26000.0,0.0,26000.0,0.0,0.0,0.0,26000.0,26000.0,0.0
+15 - MECHANICAL,15-300 - Fire Protection,S - Subcontracts,15-300.S,Fire Protection.Subcontracts,0.0,89500.0,0.0,89500.0,89500.0,0.0,17900.0,0.0,89500.0,0.0
+15 - MECHANICAL,15-400 - Plumbing,S - Subcontracts,15-400.S,Plumbing.Subcontracts,0.0,300000.0,20035.94,320035.94,320035.94,0.0,127500.0,0.0,320035.94,0.0
+15 - MECHANICAL,15-500 - HVAC,S - Subcontracts,15-500.S,HVAC.Subcontracts,0.0,1624555.0,3759.08,1628314.08,1628314.08,0.0,356643.35,0.0,1628314.08,0.0
+16 - ELECTRICAL,16-100 - Electrical Sub,S - Subcontracts,16-100.S,Electrical Sub.Subcontracts,0.0,1479500.0,0.0,1479500.0,1342000.0,0.0,128500.0,137500.0,1479500.0,0.0
+16 - ELECTRICAL,16-105 - Temp Heat Detectors,S - Subcontracts,16-105.S,Temp Heat Detectors.Subcontracts,0.0,0.0,13166.21,13166.21,13166.21,14629.12,14629.12,0.0,27795.33,-14629.12

@@ -1,0 +1,348 @@
+"use strict";
+
+// --------------------------------------------------------------------------
+// Small helpers
+// --------------------------------------------------------------------------
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+const DATE_FIELDS = [
+  "orig_substantial_completion",
+  "orig_final_completion",
+  "current_substantial_completion",
+  "current_final_completion",
+];
+
+let projects = [];
+let selectedFile = null;
+let adminPassword = sessionStorage.getItem("adminPassword") || null;
+
+function setStatus(el, message, kind) {
+  el.textContent = message || "";
+  el.className = "status" + (kind ? " " + kind : "");
+}
+
+async function api(path, { method = "GET", body, admin = false } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (admin && adminPassword) headers["X-Admin-Password"] = adminPassword;
+  const res = await fetch(path, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      detail = (await res.json()).detail || detail;
+    } catch (_) {}
+    throw new Error(detail);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+// --------------------------------------------------------------------------
+// Tabs
+// --------------------------------------------------------------------------
+$$(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    $$(".tab").forEach((t) => t.classList.remove("active"));
+    $$(".panel").forEach((p) => p.classList.remove("active"));
+    tab.classList.add("active");
+    $("#" + tab.dataset.tab).classList.add("active");
+    if (tab.dataset.tab === "admin") refreshAdminView();
+  });
+});
+
+// --------------------------------------------------------------------------
+// Generate tab
+// --------------------------------------------------------------------------
+async function loadProjects() {
+  try {
+    projects = await api("/api/projects");
+  } catch (e) {
+    projects = [];
+  }
+  const sel = $("#project-select");
+  const current = sel.value;
+  sel.innerHTML =
+    '<option value="">— Manual entry (no saved project) —</option>' +
+    projects
+      .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+      .join("");
+  if (current) sel.value = current;
+}
+
+function fillMilestones(project) {
+  $("#m_name").value = project ? project.name : "";
+  DATE_FIELDS.forEach((f) => {
+    $("#m_" + f).value = project && project[f] ? project[f] : "";
+  });
+}
+
+$("#project-select").addEventListener("change", (e) => {
+  const id = e.target.value;
+  const project = projects.find((p) => String(p.id) === id);
+  fillMilestones(project || null);
+});
+
+// Dropzone wiring
+const dropzone = $("#dropzone");
+const csvInput = $("#csv-input");
+dropzone.addEventListener("click", () => csvInput.click());
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("drag");
+});
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("drag");
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+csvInput.addEventListener("change", () => {
+  if (csvInput.files.length) setFile(csvInput.files[0]);
+});
+
+function setFile(file) {
+  selectedFile = file;
+  $("#file-name").textContent = file ? file.name : "";
+  $("#generate-btn").disabled = !file;
+}
+
+$("#generate-btn").addEventListener("click", async () => {
+  if (!selectedFile) return;
+  const status = $("#generate-status");
+  setStatus(status, "Generating…", "busy");
+  $("#generate-btn").disabled = true;
+
+  const fd = new FormData();
+  fd.append("csv_file", selectedFile);
+  const pid = $("#project-select").value;
+  if (pid) fd.append("project_id", pid);
+  if ($("#m_name").value) fd.append("name", $("#m_name").value);
+  DATE_FIELDS.forEach((f) => {
+    const v = $("#m_" + f).value;
+    if (v) fd.append(f, v);
+  });
+
+  try {
+    const res = await fetch("/api/generate", { method: "POST", body: fd });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        detail = (await res.json()).detail || detail;
+      } catch (_) {}
+      throw new Error(detail);
+    }
+    const blob = await res.blob();
+    const filename = filenameFromDisposition(
+      res.headers.get("Content-Disposition")
+    );
+    downloadBlob(blob, filename);
+    setStatus(status, "Downloaded " + filename, "ok");
+  } catch (e) {
+    setStatus(status, "Error: " + e.message, "err");
+  } finally {
+    $("#generate-btn").disabled = false;
+  }
+});
+
+function filenameFromDisposition(disposition) {
+  if (!disposition) return "Job Cost Projection.xlsx";
+  const m = /filename="?([^"]+)"?/.exec(disposition);
+  return m ? m[1] : "Job Cost Projection.xlsx";
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// --------------------------------------------------------------------------
+// Admin tab
+// --------------------------------------------------------------------------
+function refreshAdminView() {
+  if (adminPassword) {
+    $("#admin-login").classList.add("hidden");
+    $("#admin-grid").classList.remove("hidden");
+    renderGrid();
+  } else {
+    $("#admin-login").classList.remove("hidden");
+    $("#admin-grid").classList.add("hidden");
+  }
+}
+
+$("#admin-login-btn").addEventListener("click", async () => {
+  const pwd = $("#admin-password").value;
+  const status = $("#admin-login-status");
+  if (!pwd) {
+    setStatus(status, "Enter the admin password.", "err");
+    return;
+  }
+  setStatus(status, "Signing in…", "busy");
+  try {
+    await api("/api/admin/login", { method: "POST", body: { password: pwd } });
+    adminPassword = pwd;
+    sessionStorage.setItem("adminPassword", pwd);
+    setStatus(status, "", "");
+    $("#admin-password").value = "";
+    refreshAdminView();
+  } catch (e) {
+    setStatus(status, e.message, "err");
+  }
+});
+
+$("#admin-signout-btn").addEventListener("click", () => {
+  adminPassword = null;
+  sessionStorage.removeItem("adminPassword");
+  refreshAdminView();
+});
+
+$("#add-row-btn").addEventListener("click", () => {
+  renderGrid({ id: null, name: "", _new: true });
+});
+
+async function renderGrid(draftRow) {
+  const status = $("#admin-grid-status");
+  try {
+    projects = await api("/api/projects");
+  } catch (e) {
+    setStatus(status, "Could not load projects: " + e.message, "err");
+    return;
+  }
+  const body = $("#projects-body");
+  body.innerHTML = "";
+
+  const rows = projects.slice();
+  if (draftRow) rows.push(draftRow);
+
+  if (rows.length === 0) {
+    body.innerHTML =
+      '<tr class="empty-row"><td colspan="6">No projects yet. Click “+ Add project”.</td></tr>';
+    return;
+  }
+
+  rows.forEach((p) => body.appendChild(buildRow(p)));
+}
+
+function buildRow(p) {
+  const tr = document.createElement("tr");
+  tr.dataset.id = p.id == null ? "" : p.id;
+
+  const fields = ["name", ...DATE_FIELDS];
+  fields.forEach((f) => {
+    const td = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = f === "name" ? "text" : "date";
+    input.value = p[f] || "";
+    input.dataset.field = f;
+    if (f === "name") input.placeholder = "Project name";
+    input.addEventListener("input", () => {
+      td.classList.add("dirty");
+      tr.querySelector(".btn-save").disabled = false;
+    });
+    td.appendChild(input);
+    tr.appendChild(td);
+  });
+
+  const actions = document.createElement("td");
+  actions.className = "row-actions";
+  const save = document.createElement("button");
+  save.className = "btn-save";
+  save.textContent = p._new ? "Create" : "Save";
+  save.disabled = !p._new;
+  save.addEventListener("click", () => saveRow(tr, p));
+  const del = document.createElement("button");
+  del.className = "btn-del";
+  del.textContent = "Delete";
+  del.addEventListener("click", () => deleteRow(tr, p));
+  actions.appendChild(save);
+  actions.appendChild(del);
+  tr.appendChild(actions);
+  return tr;
+}
+
+function collectRow(tr) {
+  const data = {};
+  tr.querySelectorAll("input[data-field]").forEach((i) => {
+    data[i.dataset.field] = i.value || null;
+  });
+  return data;
+}
+
+async function saveRow(tr, p) {
+  const status = $("#admin-grid-status");
+  const data = collectRow(tr);
+  if (!data.name) {
+    setStatus(status, "Project name is required.", "err");
+    return;
+  }
+  setStatus(status, "Saving…", "busy");
+  try {
+    if (p.id == null) {
+      await api("/api/projects", { method: "POST", body: data, admin: true });
+    } else {
+      await api("/api/projects/" + p.id, {
+        method: "PUT",
+        body: data,
+        admin: true,
+      });
+    }
+    setStatus(status, "Saved “" + data.name + "”.", "ok");
+    await renderGrid();
+    await loadProjects();
+  } catch (e) {
+    handleAdminError(status, e);
+  }
+}
+
+async function deleteRow(tr, p) {
+  const status = $("#admin-grid-status");
+  if (p.id == null) {
+    renderGrid(); // discard unsaved draft
+    return;
+  }
+  if (!confirm('Delete project "' + (p.name || "") + '"?')) return;
+  setStatus(status, "Deleting…", "busy");
+  try {
+    await api("/api/projects/" + p.id, { method: "DELETE", admin: true });
+    setStatus(status, "Deleted.", "ok");
+    await renderGrid();
+    await loadProjects();
+  } catch (e) {
+    handleAdminError(status, e);
+  }
+}
+
+function handleAdminError(status, e) {
+  if (/auth/i.test(e.message) || /401/.test(e.message)) {
+    adminPassword = null;
+    sessionStorage.removeItem("adminPassword");
+    refreshAdminView();
+    setStatus($("#admin-login-status"), "Session expired, sign in again.", "err");
+  } else {
+    setStatus(status, "Error: " + e.message, "err");
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[c]));
+}
+
+// --------------------------------------------------------------------------
+// Init
+// --------------------------------------------------------------------------
+loadProjects();

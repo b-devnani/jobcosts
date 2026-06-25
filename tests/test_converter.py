@@ -126,10 +126,16 @@ def test_totals_and_header_formulas_repointed(workbook_bytes, parsed):
     assert ws["C4"].value == f"=+F{totals_row}"
 
 
-def test_per_row_formulas_present(workbook_bytes, parsed):
+def test_etc_is_value_not_formula(workbook_bytes, parsed):
+    """Estimated Cost to Complete (col J) must be a computed value, not a
+    formula. K (=I+J) and L (=F-K) remain formulas that read it."""
     ws = _ws(workbook_bytes)
     last = 6 + len(parsed)
-    assert ws[f"J{last}"].value == f"=MAX(F{last}:G{last})-I{last}"
+    rec = parsed[-1]
+    revised, committed, jtd = rec[5] or 0, rec[6] or 0, rec[8] or 0
+    expected = round(max(revised, committed) - jtd, 2)
+    assert ws[f"J{last}"].value == expected
+    assert not (isinstance(ws[f"J{last}"].value, str) and ws[f"J{last}"].value.startswith("="))
     assert ws[f"K{last}"].value == f"=+I{last}+J{last}"
     assert ws[f"L{last}"].value == f"=+F{last}-K{last}"
 

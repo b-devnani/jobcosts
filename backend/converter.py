@@ -277,11 +277,18 @@ def build_workbook(csv_rows: Sequence[Sequence], project: ProjectInfo, title: st
             f"The CSV has {n} rows but the template only has room for {capacity}."
         )
 
-    # Paste columns A..I as values into the data rows (J/K/L formulas stay).
+    # Paste columns A..I as values into the data rows. Column J (Estimated Cost
+    # to Complete) is written as a computed VALUE -- MAX(revised, committed) less
+    # job-to-date -- not as a formula. K (=I+J) and L (=F-K) stay as formulas
+    # (carried by the template) and read that value.
     for i, record in enumerate(csv_rows):
         row = FIRST_DATA_ROW + i
         for col_letter, value in zip("ABCDEFGHI", record):
             ws[f"{col_letter}{row}"] = value
+        revised = record[5] if isinstance(record[5], (int, float)) else 0
+        committed = record[6] if isinstance(record[6], (int, float)) else 0
+        job_to_date = record[8] if isinstance(record[8], (int, float)) else 0
+        ws[f"J{row}"] = round(max(revised, committed) - job_to_date, 2)
 
     # Delete the unused template rows below the pasted data, then repoint the
     # formulas that referenced the (now moved) totals/summary rows.

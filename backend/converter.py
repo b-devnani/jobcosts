@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -50,34 +51,31 @@ DATE_FORMAT = "mm-dd-yy"
 # and logo all live in the template file itself.
 TABLE_LAST_COL = 13  # column M
 
-# Indexes (0-based) of the CSV columns that survive "delete columns A, D, E"
-# and form template columns A..I.  Order matters: it is the template order.
-#
-#   CSV layout (0-based):
-#     0 Cost Code Tier 1      <- deleted (col A)
-#     1 Cost Code Tier 2      -> template A  Cost Code/Description
-#     2 Cost Type             -> template B  CAT
-#     3 Budget Code           <- deleted (col D)
-#     4 Budget Code Desc.     <- deleted (col E)
-#     5 Original Budget       -> template C
-#     6 Budget Modifications  -> template D
-#     7 Approved COs          -> template E
-#     8 Revised Budget        -> template F
-#     9 Committed Costs       -> template G
-#     10 Direct Cost          -> template H
-#     11 Job to date Costs    -> template I
-CSV_COLUMN_ORDER = [1, 2, 5, 6, 7, 8, 9, 10, 11]
+# The CSV columns that fill template columns A..I, in template order. They are
+# found by HEADER NAME, not position, so an export with its columns reordered,
+# or with extra/missing unrelated columns, still maps the right data. Matching
+# ignores case, spacing and punctuation ("Job-To-Date Costs" == "Job to date
+# Costs"). Everything else in the export (Cost Code Tier 1, Budget Code, Budget
+# Code Description, Forecast To Complete, ...) is ignored -- this is the manual
+# "delete columns A, D, E and keep A..I" step.
+TEMPLATE_COLUMNS = [
+    ("A", "Cost Code Tier 2"),        # Cost Code/Description
+    ("B", "Cost Type"),               # CAT
+    ("C", "Original Budget Amount"),
+    ("D", "Budget Modifications"),
+    ("E", "Approved COs"),
+    ("F", "Revised Budget"),
+    ("G", "Committed Costs"),
+    ("H", "Direct Cost"),
+    ("I", "Job to date Costs"),
+]
 # Which of the kept columns are text vs. numeric (by template column letter).
 TEXT_COLUMNS = {"A", "B"}
 
-# A handful of header names we verify so a non-Procore CSV that merely has 12+
-# columns cannot map the wrong fields into the template and silently corrupt it.
-EXPECTED_HEADERS = {
-    1: "cost code tier 2",
-    2: "cost type",
-    5: "original budget amount",
-    11: "job to date costs",
-}
+
+def _header_key(name: str) -> str:
+    """Normalise a header for matching: lowercase letters and digits only."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
 
 
 class ConversionError(ValueError):
@@ -121,10 +119,12 @@ def _clean_text(raw: str | None) -> str:
 
 
 def parse_budget_csv(content: str | bytes) -> list[list]:
-    """Apply steps 6-7: drop columns A/D/E and keep A..I for each real row.
+    """Apply steps 6-7: keep only the cost code .. job-to-date columns.
 
-    Returns a list of 9-element rows in template column order (A..I).  Rows
-    whose cost code is blank or the Procore ``None`` placeholder are skipped.
+    Columns are located by their header names, so their position in the CSV
+    does not matter. Returns a list of 9-element rows in template column order
+    (A..I). Rows whose cost code is blank or the Procore ``None`` placeholder
+    are skipped.
     """
     if isinstance(content, bytes):
         content = content.decode("utf-8-sig")
@@ -134,41 +134,37 @@ def parse_budget_csv(content: str | bytes) -> list[list]:
     if not rows:
         raise ConversionError("The CSV file is empty.")
 
-    header = [c.strip().strip('"') for c in rows[0]]
-    if len(header) < 12:
+    # Map each normalised header to its column position (first one wins).
+    positions: dict[str, int] = {}
+    for idx, name in enumerate(rows[0]):
+        positions.setdefault(_header_key(name), idx)
+
+    missing = [name for _, name in TEMPLATE_COLUMNS if _header_key(name) not in positions]
+    if missing:
+        found = ", ".join(h.strip() for h in rows[0] if h.strip()) or "(none)"
         raise ConversionError(
-            "Unexpected CSV format: expected a Procore budget-detail export with "
-            f"at least 12 columns, found {len(header)}."
+            "Unexpected CSV format (is this a Procore budget-detail export?). "
+            f"Missing column(s): {', '.join(missing)}. Found: {found}."
         )
-    mismatches = [
-        f"column {idx} should be '{name}' but is "
-        f"'{header[idx] if idx < len(header) else ''}'"
-        for idx, name in EXPECTED_HEADERS.items()
-        if idx >= len(header) or header[idx].strip().lower() != name
-    ]
-    if mismatches:
-        raise ConversionError(
-            "Unexpected CSV format (is this a Procore budget-detail export?): "
-            + "; ".join(mismatches)
-        )
+    source = [(letter, positions[_header_key(name)]) for letter, name in TEMPLATE_COLUMNS]
+    cost_code_idx = source[0][1]
+
+    def cell(raw_row: list[str], idx: int) -> str:
+        return raw_row[idx] if idx < len(raw_row) else ""
 
     out: list[list] = []
     for raw_row in rows[1:]:
-        if not any(cell.strip() for cell in raw_row):
+        if not any(c.strip() for c in raw_row):
             continue  # fully blank line
-        if len(raw_row) <= max(CSV_COLUMN_ORDER):
-            continue  # malformed / short line
 
-        cost_code = _clean_text(raw_row[1])
+        cost_code = _clean_text(cell(raw_row, cost_code_idx))
         if cost_code == "" or cost_code.lower() == "none":
             continue  # Procore placeholder / subtotal row
 
         record = []
-        for src_idx, col_letter in zip(CSV_COLUMN_ORDER, "ABCDEFGHI"):
-            if col_letter in TEXT_COLUMNS:
-                record.append(_clean_text(raw_row[src_idx]))
-            else:
-                record.append(_to_number(raw_row[src_idx]))
+        for letter, idx in source:
+            value = cell(raw_row, idx)
+            record.append(_clean_text(value) if letter in TEXT_COLUMNS else _to_number(value))
         out.append(record)
 
     if not out:

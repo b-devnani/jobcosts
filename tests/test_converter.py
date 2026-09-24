@@ -72,7 +72,53 @@ def test_spoofed_csv_with_wrong_columns_is_rejected():
     row = "1,1-020 - X,L,code,d,100,0,0,100,0,50,50\n"
     with pytest.raises(converter.ConversionError) as exc:
         converter.parse_budget_csv(header + row)
-    assert "column 2" in str(exc.value) or "column 5" in str(exc.value)
+    assert "Missing column(s)" in str(exc.value)
+    assert "Cost Type" in str(exc.value)
+    assert "Job to date Costs" in str(exc.value)
+
+
+def _reshape_csv(csv_text, order):
+    """Rebuild the sample CSV with its columns in a new order (by header name)."""
+    import csv as _csv
+    rows = list(_csv.reader(io.StringIO(csv_text)))
+    idx = {name: i for i, name in enumerate(rows[0])}
+    buf = io.StringIO()
+    writer = _csv.writer(buf)
+    for r in rows:
+        if not r:
+            continue
+        writer.writerow([r[idx[name]] if name in idx else "" for name in order])
+    return buf.getvalue()
+
+
+def test_columns_found_regardless_of_position(csv_text, parsed):
+    import csv as _csv
+    header = next(_csv.reader(io.StringIO(csv_text)))
+    shuffled = list(reversed(header))  # every column moves
+    assert converter.parse_budget_csv(_reshape_csv(csv_text, shuffled)) == parsed
+
+
+def test_extra_and_missing_unrelated_columns_are_ignored(csv_text, parsed):
+    import csv as _csv
+    header = next(_csv.reader(io.StringIO(csv_text)))
+    needed = [name for _, name in converter.TEMPLATE_COLUMNS]
+    # Drop every column the template doesn't use, then add unrelated ones.
+    order = ["Project", "Notes"] + needed[::2] + ["Vendor"] + needed[1::2]
+    assert set(order) - set(header) == {"Project", "Notes", "Vendor"}
+    assert converter.parse_budget_csv(_reshape_csv(csv_text, order)) == parsed
+
+
+def test_header_names_match_ignoring_case_spacing_and_punctuation(parsed):
+    header = (
+        "  job-to-date costs ,DIRECT COST,Committed  Costs,revised_budget,"
+        "Approved CO's,Budget Modifications,ORIGINAL BUDGET AMOUNT,Cost Type,"
+        "cost code tier 2\n"
+    )
+    first = parsed[0]  # A..I of the sample's first row
+    row = ",".join(str(v) for v in [first[8], first[7], first[6], first[5],
+                                    first[4], first[3], first[2], first[1],
+                                    first[0]]) + "\n"
+    assert converter.parse_budget_csv(header + row) == [first]
 
 
 # --------------------------------------------------------------------------- #

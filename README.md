@@ -15,9 +15,9 @@ The conversion reproduces the manual Excel procedure:
 
 | Step | Manual instruction | What the tool does |
 |------|--------------------|--------------------|
-| 6 | Delete columns A, D and E of the CSV | Drops *Cost Code Tier 1*, *Budget Code*, *Budget Code Description* |
-| 7 | Keep columns A (cost code) – I (job to date) | Keeps the remaining 9 columns in template order |
-| 8 | Paste as values into the template | Writes them into the `Job Cost` sheet starting at row 8 |
+| 6 | Delete columns A, D and E of the CSV | Ignores every column the template doesn't use (*Cost Code Tier 1*, *Budget Code*, *Budget Code Description*, …) |
+| 7 | Keep columns A (cost code) – I (job to date) | Picks *Cost Code Tier 2*, *Cost Type*, *Original Budget Amount*, *Budget Modifications*, *Approved COs*, *Revised Budget*, *Committed Costs*, *Direct Cost*, *Job to date Costs* **by header name** and writes them in template order |
+| 8 | Paste as values into the template | Writes them into the `Job Cost` sheet starting at row 7 |
 | 9 | Delete rows below the data | Removes unused template rows and repoints the totals / header formulas |
 
 The **"remaining info"** that is not in the CSV comes from the selected
@@ -54,6 +54,11 @@ the dropdown is populated out of the box. Every field except the name is
 optional — admins fill in the rest later. Seeding runs once; deleting a seeded
 project does not bring it back.
 
+> Columns are matched **by header name, not position**, so an export with its
+> columns reordered, added or removed still maps correctly (matching ignores
+> case, spacing and punctuation). If a required column is missing, the upload is
+> rejected with a message naming it.
+>
 > Procore placeholder rows (cost code `None`) are skipped automatically. The
 > contract-amount cells (`C3`–`C5`) are template formulas that recalculate from
 > the pasted data when the workbook is opened in Excel.

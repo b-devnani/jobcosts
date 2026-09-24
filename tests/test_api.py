@@ -11,9 +11,8 @@ SAMPLE_CSV = Path(__file__).parent / "sample" / "budget_details_3.csv"
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch):
-    # Point the DB at a throwaway file and set a known admin password.
-    monkeypatch.setenv("JOBCOSTS_DB", str(tmp_path / "test.db"))
+def client(storage, monkeypatch):
+    # Fresh database (see conftest.storage) and a known admin password.
     monkeypatch.setenv("ADMIN_PASSWORD", "secret")
     monkeypatch.setenv("JOBCOSTS_SEED", "0")  # CRUD tests want an empty DB
     # Reload modules so they pick up the patched env vars.

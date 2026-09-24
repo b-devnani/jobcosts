@@ -40,6 +40,12 @@ log = logging.getLogger("uvicorn.error")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    if os.environ.get("VERCEL") and not db.USE_POSTGRES:
+        log.warning(
+            "No DATABASE_URL set on Vercel: projects are stored in /tmp, which is "
+            "per-instance and temporary, so admin edits will not persist. Attach "
+            "a Postgres database (e.g. Neon) to keep them."
+        )
     if ADMIN_PASSWORD == "admin":
         log.warning(
             "ADMIN_PASSWORD is the insecure default 'admin'. Set the "

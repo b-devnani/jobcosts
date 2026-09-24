@@ -8,8 +8,7 @@ from backend import db
 
 
 @pytest.fixture()
-def seeded_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("JOBCOSTS_DB", str(tmp_path / "seed.db"))
+def seeded_db(storage, monkeypatch):
     monkeypatch.delenv("JOBCOSTS_SEED", raising=False)  # seeding on (default)
     importlib.reload(db)
     db.init_db()

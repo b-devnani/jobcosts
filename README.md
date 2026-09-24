@@ -15,9 +15,9 @@ The conversion reproduces the manual Excel procedure:
 
 | Step | Manual instruction | What the tool does |
 |------|--------------------|--------------------|
-| 6 | Delete columns A, D and E of the CSV | Drops *Cost Code Tier 1*, *Budget Code*, *Budget Code Description* |
-| 7 | Keep columns A (cost code) – I (job to date) | Keeps the remaining 9 columns in template order |
-| 8 | Paste as values into the template | Writes them into the `Job Cost` sheet starting at row 8 |
+| 6 | Delete columns A, D and E of the CSV | Ignores every column the template doesn't use (*Cost Code Tier 1*, *Budget Code*, *Budget Code Description*, …) |
+| 7 | Keep columns A (cost code) – I (job to date) | Picks *Cost Code Tier 2*, *Cost Type*, *Original Budget Amount*, *Budget Modifications*, *Approved COs*, *Revised Budget*, *Committed Costs*, *Direct Cost*, *Job to date Costs* **by header name** and writes them in template order |
+| 8 | Paste as values into the template | Writes them into the `Job Cost` sheet starting at row 7 |
 | 9 | Delete rows below the data | Removes unused template rows and repoints the totals / header formulas |
 
 The **"remaining info"** that is not in the CSV comes from the selected
@@ -54,6 +54,11 @@ the dropdown is populated out of the box. Every field except the name is
 optional — admins fill in the rest later. Seeding runs once; deleting a seeded
 project does not bring it back.
 
+> Columns are matched **by header name, not position**, so an export with its
+> columns reordered, added or removed still maps correctly (matching ignores
+> case, spacing and punctuation). If a required column is missing, the upload is
+> rejected with a message naming it.
+>
 > Procore placeholder rows (cost code `None`) are skipped automatically. The
 > contract-amount cells (`C3`–`C5`) are template formulas that recalculate from
 > the pasted data when the workbook is opened in Excel.
@@ -63,7 +68,7 @@ project does not bring it back.
 ## Run it
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime deps + test tools
 ./run.sh
 # or:  python3 -m uvicorn backend.app:app --reload
 ```
@@ -80,7 +85,8 @@ Then open <http://127.0.0.1:8000>.
 | Env var | Default | Purpose |
 |---------|---------|---------|
 | `ADMIN_PASSWORD` | `admin` | Password protecting project writes |
-| `JOBCOSTS_DB` | `backend/jobcosts.db` | SQLite database path |
+| `DATABASE_URL` | *(unset)* | Postgres connection string. When set (or `POSTGRES_URL`), projects are stored in Postgres instead of SQLite — needed on Vercel |
+| `JOBCOSTS_DB` | `backend/jobcosts.db` (`/tmp/jobcosts.db` on Vercel) | SQLite database path, used when no `DATABASE_URL` is set |
 | `JOBCOSTS_SEED` | `1` | Set to `0` to skip seeding the project list |
 | `PORT` / `HOST` | `8000` / `127.0.0.1` | Bind address for `run.sh` |
 
@@ -89,30 +95,60 @@ Then open <http://127.0.0.1:8000>.
 ## Project layout
 
 ```
+index.py            Vercel entrypoint (re-exports backend.app:app)
+vercel.json         Vercel function config (keeps tests out of the bundle)
 backend/
   app.py            FastAPI app: projects CRUD + /api/generate + static
   converter.py      CSV -> XLSX core logic (steps 6-9 + milestone dates)
-  db.py             SQLite project store (stdlib sqlite3)
+  db.py             Project store: SQLite, or Postgres when DATABASE_URL is set
   template/         The Job Cost Projection template workbook
   seed/             projects_seed.csv used to seed the dropdown on first run
   static/           Frontend (index.html, app.js, styles.css)
 tests/
   test_converter.py Unit tests for the conversion
   test_api.py       API integration tests
+  test_seed.py      Project seeding
+  test_storage.py   SQLite/Postgres selection, Vercel behaviour
+  conftest.py       Runs storage tests on SQLite and (optionally) Postgres
   sample/           Sample budget-detail CSV
 ```
 
 ## Deploy (host it online)
 
 The app is one FastAPI process that serves both the API and the frontend, plus
-a SQLite file for the project list. Three things matter when hosting:
+a small database for the project list (SQLite by default, Postgres when
+`DATABASE_URL` is set). Three things matter when hosting:
 
 1. **Bind to `0.0.0.0` and the platform port:**
    `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`
-2. **Persist the SQLite DB** on a disk/volume and point `JOBCOSTS_DB` at it
-   (otherwise admin edits reset on each restart; seeded projects still return).
+2. **Persist the project database**: a Postgres `DATABASE_URL`, or a SQLite
+   file on a disk/volume via `JOBCOSTS_DB` (otherwise admin edits reset on each
+   restart; seeded projects still return).
 3. **Set a strong `ADMIN_PASSWORD`** and use HTTPS (the admin password travels
    in a request header). Managed hosts provide HTTPS automatically.
+
+### Vercel
+
+The repo is set up for Vercel's zero-config FastAPI support: `index.py` exposes
+the app, and `vercel.json` keeps the tests out of the function bundle.
+
+1. In Vercel: **Add New → Project → import `b-devnani/jobcosts`**. FastAPI is
+   detected automatically — no build or output settings to change.
+2. Under **Settings → Environment Variables**, add **`ADMIN_PASSWORD`** with a
+   strong value.
+3. For admin edits to persist, attach a Postgres database: **Storage → Create
+   Database → Neon** (free tier) and connect it to the project. That sets
+   `DATABASE_URL` automatically. Supabase works too — set `DATABASE_URL` to
+   its pooled connection string.
+4. **Redeploy** so the new variables take effect. On first start the app creates
+   its table and seeds the 15 projects (exactly once, even if several instances
+   start together).
+
+Without a database the app still deploys and generates workbooks, but Vercel's
+filesystem is read-only except for a per-instance, temporary `/tmp`: the project
+list lives there, re-seeds whenever a new instance starts, and admin edits are
+not kept (the app logs a warning). Uploads are limited to 4.5 MB by Vercel;
+budget CSV exports are around 10 KB.
 
 ### Render (free, one click)
 
@@ -126,8 +162,8 @@ Free-tier trade-offs:
 
 * **No persistent disk** — the SQLite DB is ephemeral, so the dropdown re-seeds
   the 15 projects on every restart and admin edits are not retained. The
-  conversion and the seeded dropdown work fine; type any one-off dates in the
-  Generate form (no saved project needed).
+  conversion and the seeded dropdown work fine. (Setting `DATABASE_URL` to a
+  free Postgres, e.g. Neon, keeps edits without a paid disk.)
 * **Sleeps when idle** — the first request after ~15 min cold-starts (~30–60s).
 
 To make admin edits **persist**, upgrade to a paid (starter+) instance and add a
@@ -151,7 +187,15 @@ The named volume `jobcosts-data` keeps the project database across restarts.
 ## Tests
 
 ```bash
+pip install -r requirements-dev.txt
 python3 -m pytest -q
+```
+
+Storage tests run on SQLite. To also run them against Postgres, point
+`TEST_DATABASE_URL` at a **disposable** database (its tables are dropped):
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres@localhost:5432/jobcosts_test python3 -m pytest -q
 ```
 
 ## Notes & limits

@@ -10,6 +10,9 @@ venv/
 backend/jobcosts.db
 *.db
 
+# Vercel CLI
+.vercel/
+
 # OS / editor
 .DS_Store
 .idea/
